@@ -1,28 +1,23 @@
-# README
+# Homepage
 Eva Yap  
 January 21, 2015  
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Eva's Repository
+=========================
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Group project details
+---------------------
+Something on DNA methylation.  
 
+Seminars
+--------
 
-```r
-summary(cars)
-```
+- [seminar0](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/testRepo/blob/master/seminars/sem0.md)
+- [seminar1](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/testRepo/blob/master/seminars/sem1.md)
+- [seminar2](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/blob/master/seminars/sem2.md)
 
-```
-##      speed           dist       
-##  Min.   : 4.0   Min.   :  2.00  
-##  1st Qu.:12.0   1st Qu.: 26.00  
-##  Median :15.0   Median : 36.00  
-##  Mean   :15.4   Mean   : 42.98  
-##  3rd Qu.:19.0   3rd Qu.: 56.00  
-##  Max.   :25.0   Max.   :120.00
-```
+Homework
+--------
 
-You can also embed plots, for example:
+- [Homework1](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/testRepo/blob/master/homework/hw1.md)
 
-![](README_files/figure-html/unnamed-chunk-2-1.png) 
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
