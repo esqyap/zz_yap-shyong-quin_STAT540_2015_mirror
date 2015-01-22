@@ -1,0 +1,10 @@
+---
+title: "seminar0"
+author: "Eva"
+date: '2015-01-19'
+output:
+  html_document:
+    keep_md: yes
+---
+
+Seminar0 covers R and R Studio.
