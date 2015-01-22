@@ -1,0 +1,122 @@
+---
+title: "sem00"
+author: "Eva"
+date: "January 21, 2015"
+output:
+  html_document:
+    keep_md: yes
+---
+
+
+**Read dataset in R**
+```{r}
+prDat <- read.table("GSE4051_MINI.tsv", header = TRUE, row.names = 1)
+str(prDat)
+```
+
+**How many rows are there? Hint: nrow(), dim().**
+```{r}
+nrow(prDat)
+```
+
+**How many columns or variables are there? Hint: ncol(), length(), dim().**
+```{r}
+ncol(prDat)
+```
+
+**Inspect the first few observations or the last few or a random sample. Hint: head(), tail(), x[i, j] combined with sample().**
+```{r}
+head(prDat)
+tail(prDat)
+sample(prDat[2, ]) # all variables for Sample_21
+```
+
+**What does row correspond to – different genes or different mice?**
+```{r}
+rownames(prDat)
+```
+Answer: Different mice
+
+**What are the variable names? Hint: names(), dimnames().**
+```{r}
+names(prDat)
+
+dimnames(prDat)
+```
+
+**What “flavor” is each variable, i.e. numeric, character, factor? Hint: str().**
+```{r}
+str(prDat)
+```
+
+**For sample, do a sanity check that each integer between 1 and the number of rows in the dataset occurs exactly once. Hint: a:b, seq(), seq_len(), sort(), table(), ==, all(), all.equal(), identical().**
+```{r}
+sort(prDat$sidNum) # sort ascending sample number
+seq_len(nrow(prDat)) # number of rows in prDat
+all(sort(prDat$sidNum) == seq_len(nrow(prDat))) # is sample number equal to number of rows?
+identical(sort(prDat$sidNum), seq_len(nrow(prDat)))
+```
+
+**For each factor variable, what are the levels? Hint: levels(), str().**
+```{r}
+levels(prDat$devStage) # levels for devStage
+levels(prDat$gType) # levels for gType
+```
+
+**How many observations do we have for each level of devStage? For gType? Hint: summary(), table().**
+```{r}
+summary(prDat$devStage)
+summary(prDat$gType)
+```
+
+**Perform a cross-tabulation of devStage and gType. Hint: table().**
+```{r}
+table(prDat$devStage, prDat$gType)
+addmargins(with(prDat, table(devStage, gType)))
+```
+
+**If you had to take a wild guess, what do you think the intended experimental design was? What actually happened in real life?**  Four mice with each genotype were sacrificed at five different developmental stages to evaluate expression of three different genes. One NrlKO mice may have died or ran away before E16 developmental stage. 
+
+**For each quantitative variable, what are the extremes? How about average or median? Hint: min(), max(), range(), summary(), fivenum(), mean(), median(), quantile().**
+
+For crabHammer: 
+```{r}
+min(prDat$crabHammer) 
+
+max(prDat$crabHammer) 
+
+range(prDat$crabHammer) 
+
+summary(prDat$crabHammer) 
+
+fivenum(prDat$crabHammer)
+
+mean(prDat$crabHammer)
+
+median(prDat$crabHammer)
+
+quantile(prDat$crabHammer)
+
+```
+
+**Create a new data.frame called weeDat only containing observations for which expression of poisonFang is above 7.5.**
+```{r}
+(weedat <-subset(prDat, poisonFang > 7.5))
+```
+
+**For how many observations poisonFang > 7.5? How do they break down by genotype and developmental stage?**
+```{r}
+addmargins(with(weedat, table(devStage, gType)))
+```
+
+**Print the observations with row names “Sample_16” and “Sample_38” to screen, showing only the 3 gene expression variables.**
+```{r}
+prDat[c("Sample_16", "Sample_38"), c("crabHammer", "eggBomb", "poisonFang")]
+```
+
+**Which samples have expression of eggBomb less than the 0.10 quantile?**
+```{r}
+quantileVal <- quantile(prDat$eggBomb, 0.1)
+prDat[prDat$eggBomb < quantileVal, 1] 
+```
+
