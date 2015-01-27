@@ -1,5 +1,5 @@
-# sm01
-Eva  
+# sm01b
+Eva Y  
 January 21, 2015  
 
 
@@ -75,8 +75,8 @@ sample(prDat[2, ]) # all variables for Sample_21
 ```
 
 ```
-##           sidNum devStage eggBomb gType poisonFang crabHammer
-## Sample_21     21      E16    6.89    wt      7.177      10.02
+##           poisonFang devStage eggBomb gType crabHammer sidNum
+## Sample_21      7.177      E16    6.89    wt      10.02     21
 ```
 
 **What does row correspond to – different genes or different mice?**

@@ -1,6 +1,6 @@
 ---
-title: "sm01"
-author: "Eva"
+title: "sm01b"
+author: "Eva Y"
 date: "January 21, 2015"
 output:
   html_document:
