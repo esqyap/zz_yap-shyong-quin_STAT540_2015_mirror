@@ -1,0 +1,8 @@
+---
+title: "sm03c"
+author: "Eva Y"
+date: "January 27, 2015"
+output:
+  html_document:
+    keep_md: yes
+---
