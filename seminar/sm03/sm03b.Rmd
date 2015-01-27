@@ -1,6 +1,6 @@
 ---
-title: "sm03"
-author: "Eva"
+title: "sm03b"
+author: "Eva Y"
 date: "January 26, 2015"
 output:
   html_document:
@@ -13,7 +13,6 @@ output:
 
 ```{r}
 library(ggplot2)
-library(GGally)
 library(RColorBrewer)
 
 # Load datasets

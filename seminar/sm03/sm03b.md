@@ -1,5 +1,5 @@
-# sm03
-Eva  
+# sm03b
+Eva Y  
 January 26, 2015  
 
 **Take-home problem: The full photoRec dataset has 39 samples and 29,949 probesets. Choose 2 … or 20 … or 200 random probesets/genes and look for gene expression differences between the two genotypes, wild type versus knockout. Make use of the graphing techniques discussed this week such as scatter plots, box plot, etc.**
@@ -9,7 +9,6 @@ January 26, 2015
 
 ```r
 library(ggplot2)
-library(GGally)
 library(RColorBrewer)
 
 # Load datasets
@@ -47,42 +46,42 @@ orgRPDat <- with(rpDat, data.frame(sidChar, sidNum, devStage, gType, probeset = 
 (p <- ggplot(orgRPDat, aes(probeset, geneExp, color = gType)) + geom_point())
 ```
 
-![](sm03_files/figure-html/unnamed-chunk-2-1.png) 
+![](sm03b_files/figure-html/unnamed-chunk-2-1.png) 
 
 ```r
 # Switch axis and add jitter
 (p <- ggplot(orgRPDat, aes(geneExp, probeset, color = gType)) + geom_point(position = position_jitter(height = 0.1)))
 ```
 
-![](sm03_files/figure-html/unnamed-chunk-2-2.png) 
+![](sm03b_files/figure-html/unnamed-chunk-2-2.png) 
 
 ```r
 # Add information on other variables and descriptive statistics (i.e. mean)
 (p <- ggplot(orgRPDat, aes(devStage, geneExp, color = gType)) + geom_point() + facet_wrap(~ probeset) + stat_summary(fun.y = mean, geom = "point", shape = 4, size = 4))
 ```
 
-![](sm03_files/figure-html/unnamed-chunk-2-3.png) 
+![](sm03b_files/figure-html/unnamed-chunk-2-3.png) 
 
 ```r
 # Using density plots
 (p <- ggplot(orgRPDat, aes(geneExp, color = gType)) + facet_wrap(~ probeset) + stat_density(geom = "line", position = "identity") + geom_point(aes(y = 0.05), position = position_jitter(height = 0.005)))
 ```
 
-![](sm03_files/figure-html/unnamed-chunk-2-4.png) 
+![](sm03b_files/figure-html/unnamed-chunk-2-4.png) 
 
 ```r
 # Using box plots
 (p <- ggplot(orgRPDat, aes(devStage, geneExp, color = gType)) + facet_wrap(~ probeset) + geom_boxplot())
 ```
 
-![](sm03_files/figure-html/unnamed-chunk-2-5.png) 
+![](sm03b_files/figure-html/unnamed-chunk-2-5.png) 
 
 ```r
 # Using violin plots
 (p <- ggplot(orgRPDat, aes(devStage, geneExp, color = gType)) + facet_wrap(~ probeset) + geom_violin())
 ```
 
-![](sm03_files/figure-html/unnamed-chunk-2-6.png) 
+![](sm03b_files/figure-html/unnamed-chunk-2-6.png) 
 
 **Personally, I prefer presenting this set of biological data using stripplots because it looks more comprehensible to a reader/reviewer. What do you think?**
 
@@ -106,7 +105,7 @@ jBuPuPalette <- jBuPuFun(paletteSize)
 ggplot(hmapDatTall, aes(x = probe, y = sample, fill = expression)) + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + geom_tile() + scale_fill_gradient2(low = jBuPuPalette[1], mid = jBuPuPalette[paletteSize/2], high = jBuPuPalette[paletteSize], midpoint = (max(hmapDatTall$expression) + min(hmapDatTall$expression)) / 2, name = "Expression")
 ```
 
-![](sm03_files/figure-html/unnamed-chunk-3-1.png) 
+![](sm03b_files/figure-html/unnamed-chunk-3-1.png) 
 
 **Just for kicks, I plotted stripplots and a heatmap for 20 randomly selected probes.**
 
@@ -130,13 +129,13 @@ orgRPDat <- with(rpDat, data.frame(sidChar, sidNum, devStage, gType, probeset = 
 (p <- ggplot(orgRPDat, aes(probeset, geneExp, color = gType)) + geom_point() + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)))
 ```
 
-![](sm03_files/figure-html/unnamed-chunk-4-1.png) 
+![](sm03b_files/figure-html/unnamed-chunk-4-1.png) 
 
 ```r
 (p <- ggplot(orgRPDat, aes(devStage, geneExp, color = gType)) + geom_point() + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + facet_wrap(~ probeset) + stat_summary(fun.y = mean, geom = "point", shape = 4, size = 4))
 ```
 
-![](sm03_files/figure-html/unnamed-chunk-4-2.png) 
+![](sm03b_files/figure-html/unnamed-chunk-4-2.png) 
 
 ```r
 # Plot heatmap for data visualization
@@ -153,5 +152,5 @@ jBuPuPalette <- jBuPuFun(paletteSize)
 ggplot(hmapDatTall, aes(x = probe, y = sample, fill = expression)) + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + geom_tile() + scale_fill_gradient2(low = jBuPuPalette[1], mid = jBuPuPalette[paletteSize/2], high = jBuPuPalette[paletteSize], midpoint = (max(hmapDatTall$expression) + min(hmapDatTall$expression)) / 2, name = "Expression")
 ```
 
-![](sm03_files/figure-html/unnamed-chunk-4-3.png) 
+![](sm03b_files/figure-html/unnamed-chunk-4-3.png) 
 
