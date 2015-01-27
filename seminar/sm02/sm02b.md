@@ -87,3 +87,25 @@ fractionOfHeadsDat <- data.frame(n, fractionOfHeads)
 ![](sm02b_files/figure-html/unnamed-chunk-6-1.png) 
 
 **Based on the scatterplot, it is observed that the relative frequency of heads converges to p as n increases. In this simulation, WLLN holds water.**
+
+
+**Let's try a different p value.**
+
+```r
+n <- seq(1, 1000)
+
+set.seed(1)
+t <- 1
+p <- 0.3
+fractionOfHeads <- NULL
+
+for (i in n){
+  fractionOfHeads[i] <- round(mean(rbinom(n = i, size = t, prob = p)), digits = 2)
+}
+
+fractionOfHeadsDat <- data.frame(n, fractionOfHeads)
+(p <- ggplot(fractionOfHeadsDat, aes(n, fractionOfHeads, color = fractionOfHeads)) + geom_point() + geom_hline(yintercept=0.3))
+```
+
+![](sm02b_files/figure-html/unnamed-chunk-7-1.png) 
+
