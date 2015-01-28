@@ -23,7 +23,7 @@ library(gplots)
 prDat <- read.table("GSE4051_data.tsv")
 prDes <- readRDS("GSE4051_design.rds")
 
-# Choose 25 random probeset/genes and look for gene expression differences between the two genotypes, wild type versus knockout.
+# Choose 2 random probeset/genes and look for gene expression differences between the two genotypes, wild type versus knockout.
 transposeDataFrame <- t(prDat)
 set.seed(1)
 size <- 2
