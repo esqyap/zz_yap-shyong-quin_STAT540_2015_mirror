@@ -109,3 +109,31 @@ fractionOfHeadsDat <- data.frame(n, fractionOfHeads)
 
 ![](sm02b_files/figure-html/unnamed-chunk-7-1.png) 
 
+**Here is another way to simulate the coin toss experiment to explore WLLN.**
+**In this example, we can fix the number of tosses to be 100 and for each toss we would flip the coin t times.**
+
+
+```r
+set.seed(1)
+
+t <- 10^seq(1:5)
+n <- 100
+p <- 0.5
+tValDF <- data.frame(t=rep(t, each = n)) # make data frame with number of tosses to aggregate with simulation results after
+fractionOfHeadsDF <- NULL
+
+# for loop which creates multiple data frames
+for (i in t){
+  fractionOfHeadsDF[[i]] <- data.frame(fractionOfHeads = rbinom(n, size = i, prob = p)/i)
+}
+
+completeDF <- do.call("rbind", fractionOfHeadsDF) # bind all data frames
+completeDF <- cbind(tValDF, completeDF) # bind coin toss simulation results with t values
+
+# stripplot!
+(p <- ggplot(completeDF, aes(factor(t), fractionOfHeads, color = t)) + geom_point() + stat_summary(fun.y = mean, geom = "point", shape = 4, size = 4) + geom_hline(yintercept=0.5))
+```
+
+![](sm02b_files/figure-html/unnamed-chunk-8-1.png) 
+
+**We can observe that at higher t values, probablity of getting heads converges to p.**
