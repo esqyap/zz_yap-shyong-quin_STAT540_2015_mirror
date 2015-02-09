@@ -6,3 +6,6 @@ output:
   html_document:
     keep_md: yes
 ---
+
+**Take-home Exercise: Can you modify the code above to answer this questions: which country gains the most growth in GDP in a 5-year interval? Between which 2 years?**
+
