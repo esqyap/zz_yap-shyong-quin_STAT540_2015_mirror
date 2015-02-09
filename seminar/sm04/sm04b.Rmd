@@ -9,3 +9,28 @@ output:
 
 **Take-home Exercise: Can you modify the code above to answer this questions: which country gains the most growth in GDP in a 5-year interval? Between which 2 years?**
 
+```{r}
+suppressPackageStartupMessages(library(dplyr))
+
+# load gapminder data
+gd_url <- "http://tiny.cc/gapminder"
+gtbl <- gd_url %>% read.delim %>% tbl_df
+gtbl %>% glimpse
+
+# country that gained the most growth in GDP in a 5-year interval
+gtbl %>%
+  group_by(country) %>%
+  select(country, year, continent, gdpPercap) %>%
+  mutate(le_delta = gdpPercap - lag(gdpPercap)) %>%
+  summarize(highest_le_delta = max(le_delta, na.rm = TRUE)) %>%
+  filter(min_rank(desc(highest_le_delta)) < 2)
+
+# between which 2 years?
+gtbl %>%
+  filter(country == "Kuwait") %>%
+  select(country, year, continent, gdpPercap) %>%
+  mutate(le_delta = gdpPercap - lag(gdpPercap)) %>%
+  filter(min_rank(desc(le_delta)) < 2)
+```
+
+**Kuwait is the country that gained the most growth in GDP per capita ($28452.98) in a 5-year interval (between 1967-1972).**
