@@ -1,5 +1,4 @@
-Eva's Repository
-=========================
+# Eva's Repository
 
 Group project details
 ---------------------
@@ -7,7 +6,7 @@ Group project details
 
 Project group members
 --------
-Member  | Graduate Program |  Lab Group | Interest/Expertise |
+Member  | Graduate Program |	Lab Group | Interest/Expertise |
 ------------- | -------------|------------- |------------- |
 Rashedul Islam @Rashedul	|Bioinformatics Training Program| Dr. Martin Hirst (CHiBi) | *De novo* Sequence Assembly, Genetics and Molecular Biology, RNA-seq and ChIP-seq Data  Analysis |
 Santina Lin @Santina  |Bioinformatics Training Program| Dr. Steven Jones (BCGSC) | Data Visualization, Data Analysis, Data Mining  |	
@@ -26,10 +25,11 @@ Seminars
 - [sm03](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/tree/master/seminar/sm03)
 - [sm04](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/tree/master/seminar/sm04)
 - [sm05](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/tree/master/seminar/sm05)
+- [sm06](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/tree/master/seminar/sm06)
 
 Homework
 --------
 
-- [hw1](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/testRepo/blob/master/homework/hw1.md)
-- [hw2](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/testRepo/blob/master/homework/hw1.md)
+- [hw1](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/tree/master/homework/hw1)
+- [hw2](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/testRepo/tree/master/homework/hw2)
 

@@ -1,5 +1,9 @@
-Eva's Repository
-=========================
+---
+title: "Eva's Repository"
+output:
+  html_document:
+    keep_md: yes
+---
 
 Group project details
 ---------------------
