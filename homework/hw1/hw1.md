@@ -2,7 +2,8 @@
 Eva Y  
 February 14, 2015  
 
-##### Q0 (0 pts) Intake
+### Q0 (0 pts) Intake
+
 
 ```r
 suppressPackageStartupMessages(library(dplyr))
@@ -54,10 +55,10 @@ str(nhbe_data)
 ##  $ GSE10718_Biomat_9 : num  7.74 6.89 6.71 7.06 7.42 ...
 ```
 
-##### Q1 (1 points) What are the basic characteristics of the data and meta-data?
+### Q1 (1 points) What are the basic characteristics of the data and meta-data?
+> #### Q1a: How many probes? How many samples (Bioassay)?
 
 ```r
-# Q1a: How many probes? How many samples (Bioassay)?
 nrow(nhbe_data) # number of probes
 ```
 
@@ -72,9 +73,11 @@ ncol(nhbe_data) # number of samples
 ```
 ## [1] 23
 ```
+**There are 22737 probes and 23 samples.**
+
+> #### Q1b: What is the breakdown of samples (Bioassay) for agent, time?
 
 ```r
-# Q1b: What is the breakdown of samples (Bioassay) for agent, time?
 addmargins(with(metadata, table(Treatment, time)))
 ```
 
@@ -85,9 +88,11 @@ addmargins(with(metadata, table(Treatment, time)))
 ##   control           3   3    3   3  12
 ##   Sum               5   6    6   6  23
 ```
+**For each time-point, there are three untreated samples and three samples treated with cigarette smoke, except for the one-hour time point which only has two samples.**
+
+> #### Q1c: Create a quantitative (numeric) variable that represents the time at which cells were measured.
 
 ```r
-# Q1c: Create a quantitative (numeric) variable that represents the time at which cells were measured.
 metadata$time_num <- recode(metadata$time,
        "'1_h' = 1; '2_h' = 2; '24_h' = 24; '4_h' = 4",
        as.factor.result = FALSE) 
@@ -99,9 +104,9 @@ str(metadata$time_num) # check if the level is numeric
 ##  num [1:23] 24 1 1 1 4 4 4 1 1 2 ...
 ```
 
-```r
-# Q1d: Create a plot showing the gene expression data for one probe and the averages for all possible combinations of agent and time.
+> #### Q1d: Create a plot showing the gene expression data for one probe and the averages for all possible combinations of agent and time.
 
+```r
 # pick random gene
 set.seed(1)
 (random_gene <- sample(1:nrow(nhbe_data), size = 1))
@@ -123,11 +128,10 @@ random_gene_df <- with(random_gene_df, data.frame(ExternalID, Treatment, time, t
 ggplot(random_gene_df, aes(x = time, y = gene_exp,  color = Treatment)) + geom_point() + stat_summary(fun.y = mean, geom = "point", shape = 4, size = 4) + xlab("Time post-treatment") + ylab("Gene expression") + ggtitle("Expression of 212598_at in NHBE cells")
 ```
 
-![](hw1_files/figure-html/unnamed-chunk-2-1.png) 
+![](hw1_files/figure-html/unnamed-chunk-5-1.png) 
 
-##### Q2 (2 points) Assessing data quality
+### Q2 (2 points) Assessing data quality
 
-```r
-# Q2a: Examine the sample-to-sample correlations in a heatmap.
-```
+> #### Q2a: Examine the sample-to-sample correlations in a heatmap.
+
 
