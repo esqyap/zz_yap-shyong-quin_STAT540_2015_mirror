@@ -7,7 +7,7 @@ output:
     keep_md: yes
 ---
 
-##### Q0 (0 pts) Intake
+#### Q0 (0 pts) Intake
 ```{r}
 suppressPackageStartupMessages(library(dplyr))
 library(ggplot2)
@@ -21,24 +21,32 @@ str(metadata)
 str(nhbe_data)
 ```
 
-##### Q1 (1 points) What are the basic characteristics of the data and meta-data?
+#### Q1 (1 points) What are the basic characteristics of the data and meta-data?
+
+##### Q1a: How many probes? How many samples (Bioassay)?
 ```{r}
-# Q1a: How many probes? How many samples (Bioassay)?
 nrow(nhbe_data) # number of probes
 ncol(nhbe_data) # number of samples
+```
+**There are 22737 probes and 23 samples.**
 
-# Q1b: What is the breakdown of samples (Bioassay) for agent, time?
+##### Q1b: What is the breakdown of samples (Bioassay) for agent, time?
+```{r}
 addmargins(with(metadata, table(Treatment, time)))
+```
+**For each time-point, there are three untreated samples and three samples treated with cigarette smoke, except for the one-hour time point which only has two samples.**
 
-# Q1c: Create a quantitative (numeric) variable that represents the time at which cells were measured.
+##### Q1c: Create a quantitative (numeric) variable that represents the time at which cells were measured.
+```{r}
 metadata$time_num <- recode(metadata$time,
        "'1_h' = 1; '2_h' = 2; '24_h' = 24; '4_h' = 4",
        as.factor.result = FALSE) 
 
 str(metadata$time_num) # check if the level is numeric
+```
 
-# Q1d: Create a plot showing the gene expression data for one probe and the averages for all possible combinations of agent and time.
-
+##### Q1d: Create a plot showing the gene expression data for one probe and the averages for all possible combinations of agent and time.
+```{r}
 # pick random gene
 set.seed(1)
 (random_gene <- sample(1:nrow(nhbe_data), size = 1))

@@ -9,7 +9,6 @@ output:
 
 #### Practice exercises
 ##### Fit a linear model: explain gene expression in the wild type mice as a function of developmental stage (one-way ANOVA)
-
 ```{r}
 library(limma)
 library(lattice)
@@ -60,7 +59,8 @@ hits_Dat <- subset(hits_Dat, gType == "wt")
 makeStripplot(hits_Dat)
 
 # plot with ggplots
-makeStripplotGg(hits_Dat)
+p <- makeStripplotGg(hits_Dat) + theme(text = element_text(size=10))
+suppressMessages(print(p))
 ```
 
 **Yay, I learned how to use source()!**
@@ -140,7 +140,8 @@ top_four <- rownames(tt_cont)[1:4]
 top_four_wt <- subset(prepareData(top_four), gType == "wt")
 
 # plot using ggplot2
-makeStripplotGg(top_four_wt)
+p <- makeStripplotGg(top_four_wt) + theme(text = element_text(size=10))
+suppressMessages(print(p))
 ```
 
 ##### These 4 probes show little expression change from P6 to P10 and a strong increase from P10 to 4_weeks. Now, we want to find some where there’s a change in each case but perhaps in opposite direction.
@@ -156,7 +157,8 @@ hits1 <- rownames(prDat)[which(wtResCont[, "P10VsP6"] < 0)]
 hits1_wt <- subset(prepareData(hits1), gType == "wt")
 
 # plot using ggplot2
-makeStripplotGg(hits1_wt)
+p <- makeStripplotGg(hits1_wt) + theme(text = element_text(size=10))
+suppressMessages(print(p))
 ```
 
 ##### Here are 4 of the 8 that decline from P10 to 4_weeks.
@@ -167,7 +169,8 @@ hits2 <- rownames(prDat)[which(wtResCont[, "fourweeksVsP10"] < 0)]
 hits2_wt <- subset(prepareData(hits2[1:4]), gType == "wt")
 
 # plot using ggplot2
-makeStripplotGg(hits2_wt)
+p <- makeStripplotGg(hits2_wt) + theme(text = element_text(size=10))
+suppressMessages(print(p))
 ```
 
 ##### Is there any overlap between these probes?
@@ -183,7 +186,8 @@ hits3 <- rownames(prDat)[which(wtResCont[, "fourweeksVsP10"] > 0)]
 hits3_wt <- subset(prepareData(hits3[1:4]), gType == "wt")
 
 # plot using ggplot2
-makeStripplotGg(hits3_wt)
+p <- makeStripplotGg(hits3_wt) + theme(text = element_text(size=10))
+suppressMessages(print(p))
 ```
 
 ##### Is there any overlap between these probes and the previous “down” hits?
@@ -206,22 +210,26 @@ hits1 <- rownames(prDat)[which(wtResCont[, "P10VsP6"] < 0)]
 hits1_wt <- subset(prepareData(hits1[1:nHits]), gType == "wt")
 
 # plot
-makeStripplotGg(hits1_wt)
+p <- makeStripplotGg(hits1_wt) + theme(text = element_text(size=10))
+suppressMessages(print(p))
 
 # pick the genes that decrease in expression from p10 to 4 weeks
 hits2 <- rownames(prDat)[which(wtResCont[, "fourweeksVsP10"] < 0)]
 hits2_wt <- subset(prepareData(hits2[1:nHits]), gType == "wt")
-makeStripplotGg(hits2_wt)
+p <- makeStripplotGg(hits2_wt) + theme(text = element_text(size=10))
+suppressMessages(print(p))
 
 # pick the genes that increase in expression from p6 to p10
 hits3 <- rownames(prDat)[which(wtResCont[, "P10VsP6"] > 0)]
 hits3_wt <- subset(prepareData(hits3[1:nHits]), gType == "wt")
-makeStripplotGg(hits3_wt)
+p <- makeStripplotGg(hits3_wt) + theme(text = element_text(size=10))
+suppressMessages(print(p))
 
 # pick the genes that increase in expression from p10 to 4 weeks
 hits4 <- rownames(prDat)[which(wtResCont[, "fourweeksVsP10"] > 0)]
 hits4_wt <- subset(prepareData(hits4[1:nHits]), gType == "wt")
-makeStripplotGg(hits4_wt)
+p <- makeStripplotGg(hits4_wt) + theme(text = element_text(size=10))
+suppressMessages(print(p))
 
 # plot venn diagram
 vennDiagram(wtResCont)
@@ -232,7 +240,8 @@ vennDiagram(wtResCont)
 hits5 <- rownames(prDat)[which(wtResCont[, "P10VsP6"] != 0 & wtResCont[, "fourweeksVsP10"] != 0)] # P6-P10(1, -1) and P10-4weeks (1, -1)
 
 hits5_wt <- subset(prepareData(hits5), gType == "wt")
-makeStripplotGg(hits5_wt)
+p <- makeStripplotGg(hits5_wt) + theme(text = element_text(size=10))
+suppressMessages(print(p))
 ```
 
 ##### Lastly, let's find genes that are increased in expression from P6-P10 and decreased in expressed from P10-4weeks. 
@@ -240,80 +249,9 @@ makeStripplotGg(hits5_wt)
 hits6 <- rownames(prDat)[which(wtResCont[, "P10VsP6"] > 0 & wtResCont[, "fourweeksVsP10"] < 0)]
 
 hits6_wt <- subset(prepareData(hits6), gType == "wt")
-makeStripplotGg(hits6_wt)
+p <- makeStripplotGg(hits6_wt) + theme(text = element_text(size=10))
+suppressMessages(print(p))
 ```
 
 **We found the gene, 1441815_at. Yay!**
-
-#### Take-home problem: 
-##### (1) See if you can find one or more probes that have some expression changes up to P6 and then hold steady all the way to 4_weeks. Plot the probes in your finding. Here’s some I found.
-```{r}
-# edit the contrast matrix 
-(cont.matrix_2 <- makeContrasts(P2VsE16 = devStageP2 - Intercept, P6VsP2 = devStageP6 - devStageP2, P10VsP6 = devStageP10 - devStageP6, fourweeksVsP10 = devStage4_weeks - devStageP10, levels = wtDesMat))
-
-wtFitCont_2 <- contrasts.fit(wtFit, cont.matrix_2)
-wtEbFitCont_2 <- eBayes(wtFitCont_2)
-
-# pick a cut off, more stringent one
-cutoff <- 1e-04
-wtResCont_2 <- decideTests(wtEbFitCont_2, p.value = cutoff, method = "global")
-summary(wtResCont_2) 
-
-# pick the genes with changes from E16-P6 and no changes from P6-4weeks based on the 'more' stringent cut off
-hits7 <- rownames(prDat)[which(wtResCont_2[, "P2VsE16"] != 0 & wtResCont_2[, "P6VsP2"] != 0 & wtResCont_2[, "P10VsP6"] == 0 & wtResCont_2[, "fourweeksVsP10"] == 0)]
-
-# make data frame, select only wildtype data, and plot 
-hits7_wt <- subset(prepareData(hits7), gType == "wt")
-makeStripplotGg(hits7_wt)
-```
-
-**Using a more stringent cut off for p-value, I got 10 hits.**
-
-##### (2) Repeat (1) for the genotype NrlKO. Compare the hits between the wt and NrlKO. Are there any common genes shared by these 2 groups of hits, what does the result suggest in terms of the effect of genotype?
-```{r}
-# extract data for KO mice
-koDes <- subset(prDes, gType == "NrlKO")
-str(koDes)
-
-koDat <- subset(prDat, select = prDes$gType == "NrlKO")
-str(koDat, max.level = 0)
-
-# make design matrix, accept default "ref + treatment"
-koDesMat <- model.matrix(~ devStage, koDes)
-str(koDesMat)
-
-# fit the model for all probes at once
-# use eBayes() to moderate the estimated error variances
-koFit <- lmFit(koDat, koDesMat)
-koEbFit <- eBayes(koFit)
-
-# edit the contrast matrix 
-(cont.matrix_3 <- makeContrasts(P2VsE16 = devStageP2 - Intercept, P6VsP2 = devStageP6 - devStageP2, P10VsP6 = devStageP10 - devStageP6, fourweeksVsP10 = devStage4_weeks - devStageP10, levels = koDesMat))
-
-koFitCont <- contrasts.fit(koFit, cont.matrix_3)
-koEbFitCont <- eBayes(koFitCont)
-
-# pick a cut off, more stringent one
-cutoff <- 1e-04
-koResCont <- decideTests(koEbFitCont, p.value = cutoff, method = "global")
-summary(koResCont) 
-
-# pick the genes with changes from E16-P6 and no changes from P6-4weeks based on the 'more' stringent cut off
-hits8 <- rownames(prDat)[which(koResCont[, "P2VsE16"] != 0 & koResCont[, "P6VsP2"] != 0 & koResCont[, "P10VsP6"] == 0 & koResCont[, "fourweeksVsP10"] == 0)]
-
-# make data frame, select only KO data, and plot 
-# select only 10 hits from hits8
-hits8_ko <- subset(prepareData(hits8[1:10]), gType == "NrlKO")
-makeStripplotGg(hits8_ko)
-
-# check if there are any genes shared between wt and ko mice 
-common_hits <- intersect(hits7, hits8)
-```
-
-##### There are three probes that are commom in between wild-type and knock-out mice that are differentially expressed from E16-P6 and stablizes from E6-4weeks.
-```{r}
-# make data frame and plot 
-hits9 <- prepareData(common_hits)
-makeStripplotGg(hits9)
-```
 
