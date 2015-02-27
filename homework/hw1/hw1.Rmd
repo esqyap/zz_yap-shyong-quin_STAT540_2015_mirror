@@ -187,9 +187,9 @@ corr_matrix3 <- cor(t(time_treatment2))
 heatmap.3(corr_matrix3, scale="none", dendrogram="none",
           Rowv=FALSE, Colv=FALSE, ColSideColors=sample_cluster, symbreaks=FALSE, 
           key=TRUE, symkey=FALSE, density.info="none", trace="none", 
-          main="Sample-to-sample correlation", cexRow=1, 
+          main="Samples ordered by time , then treatment", cexRow=1, 
           col=rev(grey(seq(0,1,0.01))), ColSideColorsSize=4, 
-          KeyValueName="Pearson Correlation")
+          KeyValueName="Pearson's Correlation")
 
 # add legend
 legend("left", legend=c("1 hr","2 hrs","4 hrs","24 hrs","","Cigarette smoke","Control"), fill=c("red","blue","yellow","green","white","darkorchid","darkred"), border=FALSE, bty="n", y.intersp = 0.7, cex=0.7)
@@ -220,7 +220,7 @@ sample_cluster <- as.matrix(sample_cluster)
 heatmap.3(corr_matrix3, scale="none", dendrogram="none",
           Rowv=FALSE, Colv=FALSE, ColSideColors=sample_cluster, symbreaks=FALSE, 
           key=TRUE, symkey=FALSE, density.info="none", trace="none", 
-          main="Sample-to-sample correlation", cexRow=1, 
+          main="Samples ordered by treatment, then time", cexRow=1, 
           col=rev(grey(seq(0,1,0.01))), ColSideColorsSize=4, 
           KeyValueName="Pearson Correlation")
 
@@ -233,24 +233,24 @@ There are a few observations I would like to point out.
 
 When samples are ordered by time, and within each time group, ordered by treatment, it can be observed that:
 
-- sample 10 (control, 1 hour-exposure) is an outlier as it seems to have the lowest correlation across all other samples. This is noticeable as we can see the extra-light color streak vertically and horizontally across the heatmap. 
-- there is a trend in this heatmap. If we ignore sample 10, we can observed that control and cigarette smoke treated samples collected at 1-hour and 2-hour time points are similarly correlated across all other samples. 
+- sample 10 (control, 1 hour time-point) is an outlier as it seems to have the lowest correlation across all other samples. This is noticeable as we can see the extra-light color streak vertically and horizontally across the heatmap. 
+- there is a trend in this heatmap. If we ignore sample 10, we can observed that control and cigarette smoke treated samples at 1-hour and 2-hour time points are similarly correlated across all other samples. 
 - On the other hand, at the 4-hour and 24-hour time points, cigarette smoke treated samples have a lower correlation across all other samples in comparison to the controls. 
 - This is particularly noticeable at the 4-hour time point as we can notice that cigarette smoke treated samples (sample 22, 23, and 24) are much 'lighter' (lower correlation) than the control sample 13, 14, and 15 ('darker', higher correlation). 
 - The above-mentioned trend is also seen in the 24-hour time point but less noticeable. The color contrast is less between controls and treated samples. In addition, the correlation pattern of the treated sample 6 does not look similar to sample 4 and 5, which might be inconsistent due to technical/experimental errors. 
 
-**In summary, it is observed that cigarette smoke seems to have an effect on gene expression in NHBE cells after 4-hour and 24-hour exposures (more significantly, at the 4-hour time point).**
+**In summary, it is observed that cigarette smoke seems to have an effect on gene expression in NHBE cells at the 4-hour and 24-hour time point (more significantly, at the 4-hour time point).**
 
 When samples are ordered by treatment, and within each treatment group, ordered by time, it can be observed that:
 
 - Again, sample 10 is an outlier. 
 - the bottom-left and top-right quadrants show correlation between cigarette smoke treated samples and controls. These quadrants are lighter in color (less correlated) than the top-left and bottom-right quadrants which show correlation between samples with same treatments. 
 - the above observation indicate that cigarette smoke has an effect on the expression of gene expression in comparison to controls. 
-- within quandrants which represent correlations between treated and control samples (bottom-left and top-right), we can see that there is a decreasing gradient. Hence, as time exposure to cigarette smoke is increased, gene expression in NHBE cells become less correlated to the untreated controls. 
+- within quandrants which represent correlations between treated and control samples (bottom-left and top-right), we can see that there is a decreasing gradient. Hence, at later time-points, gene expression in NHBE cells treated with cigarette smoke becomes less correlated to the untreated controls. 
 
 > #### Q2b: Assess the presence of outlier samples.
 
-**Based on the correlation matrix in Q2a, it is observed that sample 10 (control, 1-hour exposure) seem to be an outlier. Within sample groups of the same treatment and exposure time, sample 10 and sample 6 (cigarette smoke treated, 24-hour exposure). In addition to demonstrating the lowest overall correlation across all other samples, the correlation pattern of sample 10 is different compared to sample 11 and 12 of the same group. As for sample 6, its correlation pattern is different from sample 4 and 5 in the same sample group. While exposure to cigarette smoke has an effect on gene expression in sample 4 and 5 compared to the controls (less correlated), this effect was not seen in sample 6 which is observed to be more correlated to controls.**
+**Based on the correlation matrix in Q2a, it is observed that sample 10 (control, 1-hour time point) seem to be an outlier. Within sample groups of the same treatment and exposure time, sample 10 and sample 6 (cigarette smoke treated, 24-hour time point). In addition to demonstrating the lowest overall correlation across all other samples, the correlation pattern of sample 10 is different compared to sample 11 and 12 of the same group. As for sample 6, its correlation pattern is different from sample 4 and 5 in the same sample group. While exposure to cigarette smoke has an effect on gene expression in sample 4 and 5 compared to the controls (less correlated), this effect was not seen in sample 6 which is observed to be more correlated to controls.**
 
 ##### Now, let's quantify and plot this!
 ```{r}
