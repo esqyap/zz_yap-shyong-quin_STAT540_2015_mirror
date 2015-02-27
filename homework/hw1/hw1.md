@@ -3,15 +3,25 @@ Eva Y
 February 14, 2015  
 
 ### Q0 (0 pts) Intake
-
+##### First, packages are attached for this assignment.
 
 ```r
 suppressPackageStartupMessages(library(dplyr))
 library(ggplot2)
 library(car)
+library(RColorBrewer)
+library(reshape2)
+library(GMD)
+suppressPackageStartupMessages(library(gplots))
+library(devtools)
+library(heatmap.plus)
+```
 
+##### Next step, laod data and metadata. 
+
+```r
 metadata <- read.delim("design.txt", header = TRUE)
-nhbe_data <- read.delim("data.txt", header = TRUE)
+data <- read.delim("data.txt", header = TRUE)
 
 # smell test
 str(metadata)
@@ -25,7 +35,7 @@ str(metadata)
 ```
 
 ```r
-str(nhbe_data)
+str(data)
 ```
 
 ```
@@ -55,11 +65,31 @@ str(nhbe_data)
 ##  $ GSE10718_Biomat_9 : num  7.74 6.89 6.71 7.06 7.42 ...
 ```
 
+###### Perform some data cleaning.
+
+```r
+# let's change the really long sample IDs for both data and metadata to ease future data exploration and analysis
+change_sampleID <- function(d){sub("GSE10718_Biomat_", "", d)}
+
+colnames(data) <- change_sampleID(colnames(data))
+row.names(metadata) <- change_sampleID(row.names(metadata))
+
+# let's check if they match up
+identical(colnames(data), row.names(metadata)) # looks great!
+```
+
+```
+## [1] TRUE
+```
+
+**Now, we can start exploring the dataset.**
+
 ### Q1 (1 points) What are the basic characteristics of the data and meta-data?
 > #### Q1a: How many probes? How many samples (Bioassay)?
 
+
 ```r
-nrow(nhbe_data) # number of probes
+nrow(data) # number of probes
 ```
 
 ```
@@ -67,7 +97,7 @@ nrow(nhbe_data) # number of probes
 ```
 
 ```r
-ncol(nhbe_data) # number of samples
+ncol(data) # number of samples
 ```
 
 ```
@@ -76,6 +106,7 @@ ncol(nhbe_data) # number of samples
 **There are 22737 probes and 23 samples.**
 
 > #### Q1b: What is the breakdown of samples (Bioassay) for agent, time?
+
 
 ```r
 addmargins(with(metadata, table(Treatment, time)))
@@ -92,10 +123,9 @@ addmargins(with(metadata, table(Treatment, time)))
 
 > #### Q1c: Create a quantitative (numeric) variable that represents the time at which cells were measured.
 
+
 ```r
-metadata$time_num <- recode(metadata$time,
-       "'1_h' = 1; '2_h' = 2; '24_h' = 24; '4_h' = 4",
-       as.factor.result = FALSE) 
+metadata$time_num <- recode(metadata$time, "'1_h' = 1; '2_h' = 2; '24_h' = 24; '4_h' = 4", as.factor.result = FALSE)
 
 str(metadata$time_num) # check if the level is numeric
 ```
@@ -106,10 +136,11 @@ str(metadata$time_num) # check if the level is numeric
 
 > #### Q1d: Create a plot showing the gene expression data for one probe and the averages for all possible combinations of agent and time.
 
+
 ```r
-# pick random gene
+# pick random gene 
 set.seed(1)
-(random_gene <- sample(1:nrow(nhbe_data), size = 1))
+(random_gene <- sample(1:nrow(data), size = 1))
 ```
 
 ```
@@ -117,7 +148,7 @@ set.seed(1)
 ```
 
 ```r
-random_gene <- nhbe_data[random_gene, ]
+random_gene <- data[random_gene, ]
 gene_exp <- t(random_gene)
 random_gene_df <- cbind(gene_exp, metadata)
 
@@ -128,10 +159,329 @@ random_gene_df <- with(random_gene_df, data.frame(ExternalID, Treatment, time, t
 ggplot(random_gene_df, aes(x = time, y = gene_exp,  color = Treatment)) + geom_point() + stat_summary(fun.y = mean, geom = "point", shape = 4, size = 4) + xlab("Time post-treatment") + ylab("Gene expression") + ggtitle("Expression of 212598_at in NHBE cells")
 ```
 
-![](hw1_files/figure-html/unnamed-chunk-5-1.png) 
+![](hw1_files/figure-html/unnamed-chunk-7-1.png) 
+
+**I decided to make this a function for future use to smell-test data after fitting a linear model. I also decided to switch to the `melt` function from the `reshape2` package because the scripts to create data frame seems very tedious.**
+
+
+```r
+pick_plot <- function(data, size){
+  # pick random gene(s) and create data frame
+  set.seed(1)
+  random_gene <- sample(1:nrow(data), size = size)
+  random_gene <- data[random_gene, ]
+  gene_exp <- t(random_gene)
+  random_gene_df <- cbind(gene_exp, metadata)
+  
+  # make dataset tall and skinny
+  random_gene_df <- melt(random_gene_df, id.vars = c("ExternalID", "Treatment", "time", "time_num"), variable.name = "gene", value.name = "gene_exp")
+  
+  # plot using ggplot2
+  p <- ggplot(random_gene_df, aes(x = time, y = gene_exp, color = Treatment, group = Treatment)) + geom_point() + facet_wrap(~gene) + stat_smooth(se = F) + xlab("Time post-treatment") + ylab("Gene expression") + ggtitle("Gene expression in treated and untreated NHBE cells")
+  suppressWarnings(print(p))
+  }
+
+pick_plot(data, 1)
+```
+
+```
+## geom_smooth: method="auto" and size of largest group is <1000, so using loess. Use 'method = x' to change the smoothing method.
+```
+
+![](hw1_files/figure-html/unnamed-chunk-8-1.png) 
+
+**Now, I can pick and plot using `pick_plot()` for future datasets.**
 
 ### Q2 (2 points) Assessing data quality
 
 > #### Q2a: Examine the sample-to-sample correlations in a heatmap.
 
+
+```r
+# prepare data frame
+tDat <- data.frame(t(data)) # transpose data and create data frame 
+tDat <- cbind(metadata$Treatment, metadata$time_num, tDat) # add treatment and exposure time
+colnames(tDat)[1:2] <- c("Treatment", "Time") # rename columns
+
+# order the samples by time; within each time group, sort on treatment
+time_treatment <- tDat[order(tDat$Time, tDat$Treatment), ] # order the samples
+
+drops <- c("Treatment","Time")
+time_treatment <- time_treatment[ ,!(names(time_treatment) %in% drops)] # remove treatment and time columns
+
+corr_matrix <- cor(t(time_treatment)) # create sample-sample correlation matrices
+
+# create a white-blue palette
+blu <- colorRampPalette(brewer.pal(n = 9, "Blues"))
+palette_size <- 256
+blu_palette <- blu(palette_size)
+
+# plot with heatmap.2
+heatmap.2(corr_matrix, col = blu_palette, dendrogram = "none", Rowv = FALSE, Colv = FALSE, trace = "none")
+```
+
+![](hw1_files/figure-html/unnamed-chunk-9-1.png) 
+
+**Now, order the samples by treatment; and within each treatment group, sort by time.**
+
+```r
+# order the samples by treatment; within each treatment group, sort on time
+treatment_time <- tDat[order(tDat$Treatment, tDat$Time), ] # order the samples
+
+drops <- c("Treatment","Time")
+treatment_time <- treatment_time[ ,!(names(treatment_time) %in% drops)] # remove treatment and time columns
+
+corr_matrix2 <- cor(t(treatment_time)) # create sample-sample correlation matrices
+
+# plot with heatmap.2
+heatmap.2(corr_matrix2, col = blu_palette, dendrogram = "none", Rowv = FALSE, Colv = FALSE, trace = "none")
+```
+
+![](hw1_files/figure-html/unnamed-chunk-10-1.png) 
+
+**I got a bit annoyed with interpreting the heatmaps generated using `heatmap.2`. `heatmap.2` wouldn't allow me to feed a matrix to the `ColSideColors` argument, which is helpful for this dataset as we are ordering it by two variables - treatment and time. So, I tried `heatmap.3` and it turned out to be quite nice.**
+
+
+```r
+# need packages gplots and devtools
+
+# source the function from this url
+source_url("https://raw.githubusercontent.com/obigriffith/biostar-tutorials/master/Heatmaps/heatmap.3.R")
+```
+
+```
+## SHA-1 hash of file is e0a2ae0c0a4c2ddaefb2b3e9bb4551c430535a98
+```
+
+```r
+# prepare data frame
+tDat2 <- t(data)
+tDat2 <- cbind(metadata$Treatment, metadata$time_num, tDat2)
+colnames(tDat2)[1:2] <- c("Treatment", "Time")
+
+# order the samples by time; within each time group, sort on treatment
+oDat <- tDat2[order(tDat2[ ,2], tDat2[ ,1]), ]
+oDat <- data.frame(oDat)
+
+# make ColSideColors matrix
+sample_cluster <- data.frame(oDat[ ,1:2])
+sample_cluster$Treatment[sample_cluster$Treatment == '1'] <- "darkorchid" # cigarette smoke
+sample_cluster$Treatment[sample_cluster$Treatment == '2'] <- "darkred" # control
+sample_cluster$Time[sample_cluster$Time == '1'] <- "red"
+sample_cluster$Time[sample_cluster$Time == '2'] <- "blue"
+sample_cluster$Time[sample_cluster$Time == '4'] <- "yellow"
+sample_cluster$Time[sample_cluster$Time == '24'] <- "green"
+sample_cluster <- as.matrix(sample_cluster)
+
+# get rid of columns, "Treatment" and "Time"
+drops <- c("Treatment","Time")
+time_treatment2 <- oDat[ ,!(names(oDat) %in% drops)]
+corr_matrix3 <- cor(t(time_treatment2))
+
+# plot heatmap
+heatmap.3(corr_matrix3, scale="none", dendrogram="none",
+          Rowv=FALSE, Colv=FALSE, ColSideColors=sample_cluster, symbreaks=FALSE, 
+          key=TRUE, symkey=FALSE, density.info="none", trace="none", 
+          main="Sample-to-sample correlation", cexRow=1, 
+          col=rev(grey(seq(0,1,0.01))), ColSideColorsSize=4, 
+          KeyValueName="Pearson Correlation")
+
+# add legend
+legend("left", legend=c("1 hr","2 hrs","4 hrs","24 hrs","","Cigarette smoke","Control"), fill=c("red","blue","yellow","green","white","darkorchid","darkred"), border=FALSE, bty="n", y.intersp = 0.7, cex=0.7)
+```
+
+![](hw1_files/figure-html/unnamed-chunk-11-1.png) 
+
+**Looks great. However, I can't figure out how to lower the plot title, so it left an awkward space in between the title and the heatmap. Help?**
+
+```r
+# now try order the samples by treatment; within each treatment group, sort on time
+oDat2 <- tDat2[order(tDat2[ ,1], tDat2[ ,2]), ]
+oDat2 <- data.frame(oDat2)
+
+# get rid of columns, "Treatment" and "Time"
+drops <- c("Treatment","Time")
+treatment_time2 <- oDat2[ ,!(names(oDat2) %in% drops)]
+corr_matrix3 <- cor(t(treatment_time2))
+
+# make ColSideColors matrix
+sample_cluster <- data.frame(oDat2[ ,1:2])
+sample_cluster$Treatment[sample_cluster$Treatment == '1'] <- "darkorchid" # cigarette smoke
+sample_cluster$Treatment[sample_cluster$Treatment == '2'] <- "darkred" # control
+sample_cluster$Time[sample_cluster$Time == '1'] <- "red"
+sample_cluster$Time[sample_cluster$Time == '2'] <- "blue"
+sample_cluster$Time[sample_cluster$Time == '4'] <- "yellow"
+sample_cluster$Time[sample_cluster$Time == '24'] <- "green"
+sample_cluster <- as.matrix(sample_cluster)
+
+# plot heatmap
+heatmap.3(corr_matrix3, scale="none", dendrogram="none",
+          Rowv=FALSE, Colv=FALSE, ColSideColors=sample_cluster, symbreaks=FALSE, 
+          key=TRUE, symkey=FALSE, density.info="none", trace="none", 
+          main="Sample-to-sample correlation", cexRow=1, 
+          col=rev(grey(seq(0,1,0.01))), ColSideColorsSize=4, 
+          KeyValueName="Pearson Correlation")
+
+# add legend
+legend("left", legend=c("1 hr","2 hrs","4 hrs","24 hrs","","Cigarette smoke","Control"), fill=c("red","blue","yellow","green","white","darkorchid","darkred"), border=FALSE, bty="n", y.intersp = 0.7, cex=0.7)
+```
+
+![](hw1_files/figure-html/unnamed-chunk-12-1.png) 
+
+##### What does the sample correlation matrix tell us about the overall impact of time and agent?
+There are a few observations I would like to point out. 
+
+When samples are ordered by time, and within each time group, ordered by treatment, it can be observed that:
+
+- sample 10 (control, 1 hour-exposure) is an outlier as it seems to have the lowest correlation across all other samples. This is noticeable as we can see the extra-light color streak vertically and horizontally across the heatmap. 
+- there is a trend in this heatmap. If we ignore sample 10, we can observed that control and cigarette smoke treated samples collected at 1-hour and 2-hour time points are similarly correlated across all other samples. 
+- On the other hand, at the 4-hour and 24-hour time points, cigarette smoke treated samples have a lower correlation across all other samples in comparison to the controls. 
+- This is particularly noticeable at the 4-hour time point as we can notice that cigarette smoke treated samples (sample 22, 23, and 24) are much 'lighter' (lower correlation) than the control sample 13, 14, and 15 ('darker', higher correlation). 
+- The above-mentioned trend is also seen in the 24-hour time point but less noticeable. The color contrast is less between controls and treated samples. In addition, the correlation pattern of the treated sample 6 does not look similar to sample 4 and 5, which might be inconsistent due to technical/experimental errors. 
+
+**In summary, it is observed that cigarette smoke seems to have an effect on gene expression in NHBE cells after 4-hour and 24-hour exposures (more significantly, at the 4-hour time point).**
+
+When samples are ordered by treatment, and within each treatment group, ordered by time, it can be observed that:
+
+- Again, sample 10 is an outlier. 
+- the bottom-left and top-right quadrants show correlation between cigarette smoke treated samples and controls. These quadrants are lighter in color (less correlated) than the top-left and bottom-right quadrants which show correlation between samples with same treatments. 
+- the above observation indicate that cigarette smoke has an effect on the expression of gene expression in comparison to controls. 
+- within quandrants which represent correlations between treated and control samples (bottom-left and top-right), we can see that there is a decreasing gradient. Hence, as time exposure to cigarette smoke is increased, gene expression in NHBE cells become less correlated to the untreated controls. 
+
+> #### Q2b: Assess the presence of outlier samples.
+
+**Based on the correlation matrix in Q2a, it is observed that sample 10 (control, 1-hour exposure) seem to be an outlier. Within sample groups of the same treatment and exposure time, sample 10 and sample 6 (cigarette smoke treated, 24-hour exposure). In addition to demonstrating the lowest overall correlation across all other samples, the correlation pattern of sample 10 is different compared to sample 11 and 12 of the same group. As for sample 6, its correlation pattern is different from sample 4 and 5 in the same sample group. While exposure to cigarette smoke has an effect on gene expression in sample 4 and 5 compared to the controls (less correlated), this effect was not seen in sample 6 which is observed to be more correlated to controls.**
+
+##### Now, let's quantify and plot this!
+
+```r
+# we can determine an outlier by identifying mean correlation coefficient that fall out of the mean +/- standard deviation
+
+# boxplot should do the trick!
+corr_matrix_tall <- melt(corr_matrix)
+rm_same <- which(with(corr_matrix_tall, value == 1)) # remove correlations between same samples
+
+# sanity check: there should be 23 correlations between same samples
+length(rm_same)
+```
+
+```
+## [1] 23
+```
+
+```r
+corr_matrix_tall <- corr_matrix_tall[-rm_same, ] # removed, new data frame without correlations between same samples
+
+# determine mean and sd 
+summary(corr_matrix_tall$value)
+```
+
+```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##  0.8845  0.9029  0.9087  0.9091  0.9157  0.9362
+```
+
+```r
+corr_mean <- mean(corr_matrix_tall$value)
+corr_sd_p <- corr_mean + sd(corr_matrix_tall$value) # mean plus sd
+corr_sd_n <- corr_mean - sd(corr_matrix_tall$value) # mean minus sd
+
+# make sure ggplot2 don't reorder my sample sequence, keep it ordered by time followed by treatment
+corr_matrix_tall$Var2 <- as.character(corr_matrix_tall$Var2) # turn sample(column = Var2) into character vector
+corr_matrix_tall$Var2 <- factor(corr_matrix_tall$Var2, levels=unique(corr_matrix_tall$Var2))
+
+# plot boxplot
+ggplot(corr_matrix_tall, aes(x = Var2, y = value)) + geom_boxplot() + geom_hline(aes(yintercept = corr_mean, colour = "red")) + geom_hline(aes(yintercept=corr_sd_p, colour = "blue")) + geom_hline(aes(yintercept=corr_sd_n, colour = "blue")) + xlab("Samples") + ylab("Correlation coefficient") + ggtitle("Sample-to-sample correlation (order by time, then treatment)")
+```
+
+![](hw1_files/figure-html/unnamed-chunk-13-1.png) 
+
+**The blue line in the boxplot is the mean of the correlation matrix whereas the red lines are the mean +/- standard deviation. From the boxplot, we can see that the mean of sample 10 is the only one out of the range of mean of the correlation matrix +/- standard deviation. This indicates that sample 10 is an outlier within this correlation matrix.**
+
+##### Now that sample 10 has been quantified to be an outlier, let's see if it correlate with controls better than other samples treated with cigarette smoke.
+
+```r
+# extract data from corr_matrix_tall for sample 10 and correlations with control samples
+# use summary() on correlation of sample 10 with control samples
+ctrl <- which(with(metadata, Treatment == "control"))
+ctrl <- row.names(metadata[ctrl, ])
+ctrl <- ctrl[ctrl != "10"]
+select_ctrl <- (corr_matrix_tall$Var1 %in% ctrl & corr_matrix_tall$Var2 == "10")
+corr_ctrl <- corr_matrix_tall[select_ctrl, ]
+summary(corr_ctrl$value)
+```
+
+```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##  0.8974  0.8991  0.9009  0.9015  0.9036  0.9059
+```
+
+```r
+# extract data from corr_matrix_tall for sample 10 and correlations with cigarette smoke treated samples
+# use summary() on correlation of sample 10 with cigarette smoke treated samples 
+treated <- which(with(metadata, Treatment == "cigarette_smoke"))
+treated <- row.names(metadata[treated, ])
+treated <- treated [treated  != "10"]
+select_treated <- (corr_matrix_tall$Var1 %in% treated  & corr_matrix_tall$Var2 == "10")
+corr_treated <- corr_matrix_tall[select_treated, ]
+summary(corr_treated$value)
+```
+
+```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##  0.8845  0.8895  0.8944  0.8939  0.8974  0.9048
+```
+
+**Despite sample 10 being an outlier, its correlation with its own sample group (control) is higher than its correlation with cigarette smoke treated samples. This can be concluded based on a slightly higher mean correlation coefficient between sample 10 and control samples (0.9015) versus treated samples (0.8939).**
+
+##### If I have time, I'll do a t-test on sample 6 within its sample group. 
+
+
+> #### Q2c: Assess the distribution of expression values, separated by agent.
+
+##### The sample-sample correlation matrix does not capture differences between pairs of samples that are caused by systematic up- or down-regulation of all/most genes. Can you explain why?
+The Pearson's correlation measures the linear relationship between two variables. Basically, in this case, how related two samples are to each other. This is determined based on a best-fit line. If most genes are systematically up/downregulated in a pair of samples, this moves the best-fit line up or down but does not change how the best-fit line is fitted. Hence, this difference is not captured by Pearson's correlation.
+
+##### Let's determine if there is a "shift" in distribution of expression levels by plotting two histograms and comparing range, mean, and median. 
+
+```r
+# prepare tall and skinny data frame for plotting
+hDat <- melt(tDat, id.vars = c("Treatment", "Time"))
+
+# plot histogram
+ggplot(hDat, aes(x = value)) + geom_histogram(binwidth=.5, colour="black", fill="white") + facet_wrap(~Treatment) + xlab("Gene expression") + ggtitle("The effects of cigarette smoke on gene expression in NHBE cells") + geom_vline(aes(xintercept=mean(value)), color="red", linetype="dashed", size=1) + geom_vline(aes(xintercept=median(value)), color="blue", linetype="dashed", size=1)
+```
+
+![](hw1_files/figure-html/unnamed-chunk-16-1.png) 
+
+**The red line is the mean and the blue line is the median. The values seem to be similar for the control and treated group. Shape and range of both histograms look similar indicating there is no shift.** 
+
+### Q3 (4 points) Assess differential expression with respect to treatment.
+> #### Q3a: Fit a linear model, modeling expression level of each probe using treatment as a single covariate.
+
+
+> #### Q3b: Count your hits, and explore them.
+
+
+> #### Q3c: Plot the expression levels for a few top (interesting) probes, and a few non-associated (boring) probes.
+
+
+### Q4 (4 points) Assess differential expression with respect to time.
+> #### Q4a: Fit a linear model, assessing the effect of time on gene expression
+
+
+> #### Q4b: Plot expression levels of a few top probes and a few boring ones:
+
+### Q5 (4 points) Perform differential expression analysis using a full model with both treatment and time as covariates.
+
+> #### Q5a: Quantify the number of hits for treatment.
+
+
+> #### Q5b: Test the null hypothesis that there is no significant interaction between time and treatment.
+
+
+> #### Q5c: Plot a few probes where the interaction does and does not matter
+
+
+#### Bonus question: consider the limitations of the model you used in Q5, can you think of an assumption underlying the model that is not consistent with the specification of this data?
 
