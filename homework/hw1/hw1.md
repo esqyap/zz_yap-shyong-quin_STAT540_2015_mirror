@@ -1051,4 +1051,4 @@ ggplot(bor_genes_tall, aes(x=Time_Hours, y=gene_exp, group=Treatment, color=Trea
 #### Bonus question: consider the limitations of the model you used in Q5, can you think of an assumption underlying the model that is not consistent with the specification of this data?
 One of the assumptions of linear regression is that the relationship between a response variable and independent variable (covariate) must be **linear**. As for gene expression over time, this is not always the case as presented in lecture 9. Some genes demonstrate a quadratic effect over time so perhaps we should test the data with a quadratic model and make a comparison. 
 
-Some help from this [link](http://people.duke.edu/~rnau/testing.htm)..
+Some help from this [link](http://people.duke.edu/~rnau/testing.htm).
