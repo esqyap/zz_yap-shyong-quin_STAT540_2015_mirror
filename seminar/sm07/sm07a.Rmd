@@ -1,0 +1,124 @@
+---
+title: "sm07"
+author: "Eva Y"
+date: "March 10, 2015"
+output:
+  html_document:
+    keep_md: yes
+---
+
+### Take-home problem: Create a similar count table for all the exons located on chr2L.
+
+#### First, load and filter the bam files as per instructions in the seminar. 
+```{r}
+suppressPackageStartupMessages(library(ShortRead))
+library(Rsamtools)
+library(easyRNASeq)
+library(lattice)
+
+bamDat <- readAligned("../../data/drosophilaMelanogasterSubset.bam", type="BAM")
+
+#bamDat is an AlignedRead object from the ShortRead package. It stores reads and their genomic alignment information.
+
+str(bamDat)
+
+# filter bamDat, remove reads with >2 'N' and filter for reads aligning to chromosomes
+nFilt <- nFilter(2)
+chrFilt <- chromosomeFilter(regex="chr")
+filt <- compose(nFilt, chrFilt)
+bamDatFiltered <- bamDat[filt(bamDat)]
+str(bamDatFiltered)
+```
+
+#### This is followed by accessing the genome annotations to extract for all exons.
+```{r}
+# use the BioMart functionality of the Ensembl database to retrieve the annotations of Drosophila melagoaster chromosome 2L
+library(biomaRt)
+ensembl <- useMart("ensembl", dataset="dmelanogaster_gene_ensembl")
+
+# query for the information we need
+annotation.fields <- c("ensembl_gene_id", "strand", "ensembl_transcript_id", 
+                       "chromosome_name", "ensembl_exon_id", 
+                       "exon_chrom_start","exon_chrom_end")
+
+# download the actual annotation data and restrict to chr2L
+exon.annotation <- getBM(annotation.fields, mart=ensembl,
+                         filters="chromosome_name", values=c("2L"))
+
+# chromosome name lacks the “chr” prefix, add "chr" to annotation data
+exon.annotation$chromosome <- paste("chr", 
+                                    exon.annotation$chromosome_name, sep='')
+
+# double check
+levels(as.factor(exon.annotation$chromosome))
+```
+
+#### Next, we need to store the location of the exons. 
+```{r}
+exon.range <- RangedData(IRanges(start=exon.annotation$exon_chrom_start,
+                                 end=exon.annotation$exon_chrom_end),
+                         space=exon.annotation$chromosome,
+                         strand=exon.annotation$strand,
+                         transcript=exon.annotation$ensembl_transcript_id,
+                         gene=exon.annotation$ensembl_gene_id,
+                         exon=exon.annotation$ensembl_exon_id,
+                         universe="Dm3")
+show(exon.range)
+```
+
+#### We need to determine differential expression analysis on a per exon basis as stated by the question of the problem. 
+```{r}
+# first let's get the load genome database
+library(BSgenome.Dmelanogaster.UCSC.dm3)
+
+# get length of the chromosome
+(chrSizes <- seqlengths(Dmelanogaster))
+
+# find out how many bases cover each interval for all chromosomes
+(cover <- coverage(bamDatFiltered, width=chrSizes))
+
+# get the average coverage for all bp covered by a given exon
+exon.coverage <- aggregate(cover[match(names(exon.range),names(cover))],
+                         ranges(exon.range), sum)
+
+exon.coverage <- ceiling(exon.coverage/unique(width(bamDatFiltered)))
+show(exon.coverage)
+
+# sanity check to make sure that there are 28662 exons
+length(exon.coverage[["chr2L"]])
+length(ranges(exon.range)$chr2L)
+```
+
+#### Generate the count table and store exon coverage as a data frame. 
+```{r}
+countTable <- data.frame(chromosome=exon.range$space,
+                         exon_start=start(exon.range$ranges),
+                         exon_end=end(exon.range$ranges),
+                         strand=exon.range$strand,
+                         transcript=exon.range$transcript,
+                         gene=exon.range$gene,
+                         exon=exon.range$exon,
+                         count=as.vector(exon.coverage[["chr2L"]]))
+
+dim(countTable)
+head(countTable)
+```
+
+#### Add normalization value = RPKM.
+```{r}
+RPKM <- (as.vector(exon.coverage[["chr2L"]])/(end(exon.range$ranges) - start(exon.range$ranges)))*(1000000000/length(bamDat))
+
+countTable <- data.frame(countTable, RPKM=RPKM)
+```
+
+#### Let's try order the exons and make a coverage plot to access differential expression. 
+```{r}
+# order the by exon_start so the coverage plotted will be along chr2L
+countTable <- countTable[order(countTable$exon_start), ]
+
+# plot 
+xyplot(RPKM ~ exon_start, countTable, grid = TRUE, group = gene)
+```
+
+#### Interpret the plot: 
+I plotted exon_start vs. RPKM and group the genes based on color. Based on the plot, it can be observed that there are some exons that are differentially expressed in chr2L. As each color represents a gene, it can be observed that exons of certain genes seem to be differentially expressed. *Am I making sense?*
