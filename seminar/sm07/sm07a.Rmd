@@ -1,5 +1,5 @@
 ---
-title: "sm07"
+title: "sm07a"
 author: "Eva Y"
 date: "March 10, 2015"
 output:

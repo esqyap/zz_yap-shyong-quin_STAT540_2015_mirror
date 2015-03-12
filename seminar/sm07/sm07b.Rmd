@@ -7,8 +7,176 @@ output:
     keep_md: yes
 ---
 
-### Take-home problem: Choose a specific threshold for the adjusted p value, find the genes identified as differentially expressed using each of edgeR, DESeq and voom+limma. Compare the number of genes in these 3 lists, and draw a venn digram demonstrating the overlap (if any!).
-```{r}
-library(edgeR)
+### Mini exercise: Redo the above analysis but first filter the data and remove any gene that has: 1. count equal to zero across all samples 2. count equal to zero in at least one sample in each genotype group
 
+#### Load packages and data
+```{r, message=FALSE}
+library(edgeR)
+library(DESeq)
+library(dplyr)
+library(ggplot2)
+library(gplots)
+
+dat <- read.table("../../data/bottomly_count_table.tsv",
+                  header = TRUE, row.names = 1)
+
+des <- read.table("../../data/bottomly_phenodata.tsv",
+                  header = TRUE, row.names = 1)
+```
+
+#### Filter the data as mentioned in the question. 
+```{r}
+# remove any gene that has: 
+# 1. count equal to zero across all samples 
+sum_counts <- data.frame(apply(dat, 1, sum))
+colnames(sum_counts) <- "sum_counts"
+sdat <- cbind(gene=row.names(dat), dat, sum_counts)
+filter_dat <- sdat %>% filter(sum_counts != 0)
+
+# check if all sum_counts are not 0
+which(filter_dat$sum_counts == 0)
+
+# 2. count equal to zero in at least one sample in each genotype group
+unique(des$strain)
+gtype1 <- which(des$strain == "C57BL/6J")
+gtype2 <- which(des$strain == "DBA/2J")
+
+filter_gtype1 <- apply(filter_dat[ ,gtype1+1], 1, function(row) !0 %in% row)
+filter_gtype2 <- apply(filter_dat[ ,gtype2+1], 1, function(row) !0 %in% row)
+filter_dat <- filter_dat %>% filter(filter_gtype1 == TRUE & filter_gtype2 == TRUE)
+
+# I guess I could also remove rows with >1 0...haha, but I already did this. 
+```
+
+### Redo the analysis as in the seminar. 
+```{r}
+# make changes to filtered data frame
+row.names(filter_dat) <- filter_dat$gene
+filter_dat <- filter_dat[ ,2:22]
+
+# sanity check
+all(rownames(des) == colnames(filter_dat))
+```
+
+### GLM edgeR
+```{r}
+# first step is to create a ‘group’ object describing which group each sample belongs to
+with(des,table(strain))
+group <- factor(c(rep("1",10),rep("2",11)))
+
+#this produces an object of type DGEList with can be manipulated in a similar way to any other list object in R
+dge.glm <- DGEList(counts=filter_dat, group=group)
+str(dge.glm)
+
+names(dge.glm)
+dge.glm[["samples"]]
+
+nrow(dge.glm[[1]])
+ncol(dge.glm[[1]])
+```
+
+### Make design matrix and perform analysis.
+```{r}
+design <- model.matrix(~group)
+
+# determine dispersion values
+dge.glm.com.disp <- estimateGLMCommonDisp(dge.glm, design, verbose=TRUE)
+
+dge.glm.trend.disp <- estimateGLMTrendedDisp(dge.glm.com.disp, design)
+
+dge.glm.tag.disp <- estimateGLMTagwiseDisp(dge.glm.trend.disp, design)
+
+#plot the tagwise dispersion against log2-CPM (counts per million)
+plotBCV(dge.glm.tag.disp)
+
+fit <- glmFit(dge.glm.tag.disp, design)
+colnames(coef(fit))
+
+lrt <- glmLRT(fit, coef=2)
+topTags(lrt)
+
+tt.glm <- topTags(lrt, n=Inf)
+class(tt.glm)
+
+nrow(tt.glm$table[tt.glm$table$FDR < 0.01,])
+
+interestingSamples <- rownames(tt.glm$table[tt.glm$table$FDR < 1e-50,])
+cpm(dge.glm.tag.disp)[interestingSamples,]
+
+summary(de.glm <- decideTestsDGE(lrt, p=0.05, adjust="BH"))
+```
+
+With the filtering applied, 503 genes are under-expressed in group 2 (DBA/2J) compared with group 1 (C57BL/6J), 8183 show no differences in expression while 510 genes are over-expressed.
+
+```{r}
+#plotting the tagwise log fold changes against log-cpm
+tags.glm <- rownames(dge.glm.tag.disp)[as.logical(de.glm)]
+plotSmear(lrt, de.tags=tags.glm)
+abline(h=c(-2,2),col="blue")
+```
+
+Good ticket that explains edgeR [parameters and concepts](http://seqanswers.com/forums/showthread.php?t=5591).
+
+
+### Take-home problem: Choose a specific threshold for the adjusted p value, find the genes identified as differentially expressed using each of edgeR, DESeq and voom+limma. Compare the number of genes in these 3 lists, and draw a venn digram demonstrating the overlap (if any!).
+
+#### Using edgeR: 
+```{r}
+# reading count table data and grouping information
+dge.glm <- DGEList(counts=dat, group=group)
+
+# use the same design matrix and perform common, trend, and tagwise analysis
+dge.glm.com.disp <- estimateGLMCommonDisp(dge.glm, design, verbose=TRUE)
+
+dge.glm.trend.disp <- estimateGLMTrendedDisp(dge.glm.com.disp, design)
+
+dge.glm.tag.disp <- estimateGLMTagwiseDisp(dge.glm.trend.disp, design)
+
+# fit the model 
+fit <- glmFit(dge.glm.tag.disp, design)
+lrt <- glmLRT(fit, coef=2)
+
+# pick genes with adjusted p value < 0.01
+tt.glm <- topTags(lrt, n=Inf)
+edgeR <- row.names(subset(tt.glm$table, FDR < 0.01))
+```
+
+#### Using DESeq:
+```{r}
+# reading in the same count table data and grouping information
+deSeqDat <- newCountDataSet(dat, group)
+
+# estimate the size factors to account for differences in library coverage and estimate the variance
+deSeqDat <- estimateSizeFactors(deSeqDat)
+deSeqDat <- estimateDispersions(deSeqDat)
+
+# fit model and examine the results
+results <- nbinomTest(deSeqDat, levels(group)[1], levels(group)[2])
+
+# pick genes with adjusted p value < 0.01
+DESeq <- results %>%
+  filter(padj < 0.01) %>%
+  select(id)
+```
+
+#### Using voom & limma
+```{r}
+# reading in the same count table data and grouping information
+norm.factor <- calcNormFactors(dat)
+
+# estimate the size factors to account for differences in library coverage and estimate the variance
+dat.voomed <- voom(dat, design, lib.size=colSums(dat)*norm.factor)
+
+# fit model and examine the results
+fit <- lmFit(dat.voomed, design)
+fit <- eBayes(fit)
+
+# pick genes with adjusted p value < 0.01
+tt.voom <- topTable(fit, coef=2, n=Inf)
+voom_limma <- row.names(subset(tt.voom, adj.P.Val < 0.01))
+```
+
+#### Generate venn diagram to inspect overlaps between these three methods. 
+```{r}
+suppressWarnings(venn(list(edgeR=edgeR, DESeq=DESeq, voom_limma=voom_limma)))
 ```
