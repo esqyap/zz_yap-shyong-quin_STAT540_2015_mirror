@@ -1,0 +1,114 @@
+---
+title: "sm09"
+author: "Eva Y"
+date: "March 12, 2015"
+output: html_document
+---
+
+### Take-home problem: 
+(1) draw a plot with number of clusters in the x-axis and the average silhouette widths in the y-axis. Use the information obtained to determine if 5 was the best choice for the number of clusters.
+(2)For a common choice of k, compare the clustering across different methods, e.g. hierarchical (pruned to specific k, obviously), k-means, PAM. You will re-discover the “label switching problem” for yourself. How does that manifest itself? How concordant are the clusterings for different methods?
+
+#### Load packages and data. Perform some modifications to the dataset. 
+```{r, message=FALSE}
+library(RColorBrewer)
+library(cluster)
+library(pvclust)
+library(xtable)
+library(limma)
+library(plyr)
+library(lattice)
+
+prDat <- read.table("../../data/GSE4051_data.tsv", 
+                    header = TRUE, row.names = 1)
+str(prDat, max.level = 0)
+
+prDes <- readRDS("../../data/GSE4051_design.rds")
+str(prDes)
+
+# scale data, minus mean divided by sd
+sprDat <- t(scale(t(prDat)))
+str(sprDat, max.level = 0, give.attr = FALSE)
+
+# compute pairwise distances
+pr.dis <- dist(t(sprDat), method = 'euclidean')
+
+# create a new factor representing the interaction of gType and devStage
+prDes$grp <- with(prDes, interaction(gType, devStage))
+summary(prDes$grp)
+```
+
+#### Q1: 
+```{r}
+# PAM algorithm
+# number of clusters
+k <- 2:30
+
+# make function give average silhouette width
+get_avg_swidth <- function(k){
+  pr.pam <- pam(pr.dis, k=k)
+  pr.pam_sum <- summary(pr.pam)
+  avg_swidth <- pr.pam_sum$silinfo$avg.width
+  avg_swidth
+}
+
+# apply the function to a vector 2:30
+avg_swidth_df <- data.frame(clusters=c(2:30), 
+                            avg_width=sapply(k, get_avg_swidth))
+
+# plot avg width vs. clusters
+xyplot(avg_width ~ clusters, avg_swidth_df, xlab="Number of Clusters", ylab="Average Silhouette Width")
+```
+
+#### Q2: 
+```{r}
+# pick k=4 because after that the average silhouette width drops based on the plot in Q1. 
+# this is the elbow/knee curve some discussions are referring to...
+k <- 4
+```
+
+##### Generate hierarchical clustering:
+```{r}
+pr_hc <- hclust(pr.dis, method = 'complete')
+
+# identify 4 clusters
+op <- par(mar = c(1,4,4,1))
+plot(pr_hc, labels = prDes$grp, cex = 0.6, 
+     main = "Complete HC showing 4 clusters")
+rect.hclust(pr_hc, k = 4)
+
+# make data frame
+pr_hc <- cutree(pr_hc, k=k)
+pr_hc_df <- data.frame(pr_hc)
+colnames(pr_hc_df) <- "hc"
+```
+
+##### Perform kmeans clustering:
+```{r}
+set.seed(1)
+pr_km <- kmeans(t(sprDat), centers = k, nstart =  50)
+
+# make data frame
+pr_km_df <- data.frame(km=pr_km$cluster)
+```
+
+##### Perform PAM:
+```{r}
+pr_pam <- pam(pr.dis, k = k)
+
+# make data frame
+pr_pam_df <- data.frame(pm=pr_pam$clustering)
+```
+
+##### Label switching problem: 
+The problem is that clustering of similar samples to a group can be named differently between different methods. For example, if sample 1, 2, and 3 are designated cluster 1 using kmeans, the same cluster consisting of the same samples (1, 2, and 3) can be named cluster 2. That's pretty annoying. How could we tell concordance?
+```{r}
+all_clust <- cbind(prDes$grp, pr_hc_df, pr_pam_df, pr_km_df)
+all_clust
+```
+
+By eyeballing this table, we can sort of tell that cluster results are more concordant between PAM and kmeans.
+
+To validate two cluster solutions, we can use `cluster.stats()` from the `fpc` package. *Coming soon...*
+
+
