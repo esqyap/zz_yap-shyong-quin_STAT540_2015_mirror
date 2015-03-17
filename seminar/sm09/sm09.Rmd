@@ -20,6 +20,7 @@ library(xtable)
 library(limma)
 library(plyr)
 library(lattice)
+library(gplots)
 
 prDat <- read.table("../../data/GSE4051_data.tsv", 
                     header = TRUE, row.names = 1)
@@ -109,8 +110,112 @@ all_clust <- cbind(prDes$grp, pr_hc_df, pr_pam_df, pr_km_df)
 all_clust
 ```
 
-By eyeballing this table, we can sort of tell that cluster results are more concordant between PAM and kmeans.
+By eyeballing this table, we can sort of tell that cluster results are more concordant between PAM and kmeans (i.e. samples are similarly distributed in clusters).
 
-To validate two cluster solutions, we can use `cluster.stats()` from the `fpc` package. *Coming soon...*
+##### But let's try visualizing this with venn diagrams.
+```{r}
+# subset the data for hc
+clust_hc1 <- subset(row.names(all_clust), 
+                    all_clust$hc == 1)
+clust_hc2 <- subset(row.names(all_clust), 
+                    all_clust$hc == 2)
+clust_hc3 <- subset(row.names(all_clust), 
+                    all_clust$hc == 3)
+clust_hc4 <- subset(row.names(all_clust), 
+                    all_clust$hc == 4)
 
+# subset the data for pam 
+clust_pam1 <- subset(row.names(all_clust), 
+                    all_clust$pm == 1)
+clust_pam2 <- subset(row.names(all_clust), 
+                    all_clust$pm == 2)
+clust_pam3 <- subset(row.names(all_clust), 
+                    all_clust$pm == 3)
+clust_pam4 <- subset(row.names(all_clust), 
+                    all_clust$pm == 4)
+
+# subset the data for km 
+clust_km1 <- subset(row.names(all_clust), 
+                    all_clust$km == 1)
+clust_km2 <- subset(row.names(all_clust), 
+                    all_clust$km == 2)
+clust_km3 <- subset(row.names(all_clust), 
+                    all_clust$km == 3)
+clust_km4 <- subset(row.names(all_clust), 
+                    all_clust$km == 4)
+```
+
+##### Figure out which cluster is which by generating venn diagrams. 
+```{r}
+# clust_km1 vs. all hc
+venn(list(km1=clust_km1, hc1=clust_hc1, hc2=clust_hc2, hc3=clust_hc3, hc4=clust_hc4)) # km1 = hc3
+
+# clust_km2 vs. all hc
+venn(list(km2=clust_km2, hc1=clust_hc1, hc2=clust_hc2, hc3=clust_hc3, hc4=clust_hc4)) # km2 = hc1
+
+# clust_km3 vs. all hc
+venn(list(km3=clust_km3, hc1=clust_hc1, hc2=clust_hc2, hc3=clust_hc3, hc4=clust_hc4)) # km3 = hc1 ???
+
+# clust_km4 vs. all hc
+venn(list(km4=clust_km4, hc1=clust_hc1, hc2=clust_hc2, hc3=clust_hc3, hc4=clust_hc4)) # km4 = hc1 ???
+```
+
+It is quite hard to match clusters between the hc method and km method, which indicates that these two methods are quite disconcordant. 
+
+```{r}
+# clust_pam1 vs. all hc
+venn(list(pam1=clust_pam1, hc1=clust_hc1, hc2=clust_hc2, hc3=clust_hc3, hc4=clust_hc4)) # pam1 = hc1 
+
+# clust_pam2 vs. all hc
+venn(list(pam2=clust_pam2, hc1=clust_hc1, hc2=clust_hc2, hc3=clust_hc3, hc4=clust_hc4)) # pam2 = hc3
+
+# clust_pam3 vs. all hc
+venn(list(pam3=clust_pam3, hc1=clust_hc1, hc2=clust_hc2, hc3=clust_hc3, hc4=clust_hc4)) # pam3 = hc1 ???
+
+# clust_km4 vs. all hc
+venn(list(pam4=clust_pam4, hc1=clust_hc1, hc2=clust_hc2, hc3=clust_hc3, hc4=clust_hc4)) # pam4 = hc1 ???
+```
+
+The same is observed for pam vs. hc. 
+
+```{r}
+# clust_km1 vs. all pam
+venn(list(km1=clust_km1, pam1=clust_pam1, pam2=clust_pam2, pam3=clust_pam3, pam4=clust_pam4)) # km1 = pam2
+
+# clust_km2 vs. all pam
+venn(list(km2=clust_km2, pam1=clust_pam1, pam2=clust_pam2, pam3=clust_pam3, pam4=clust_pam4)) # km2 = pam4
+
+# clust_km3 vs. all pam
+venn(list(km3=clust_km3, pam1=clust_pam1, pam2=clust_pam2, pam3=clust_pam3, pam4=clust_pam4)) # km3 = pam3
+
+# clust_km4 vs. all pam
+venn(list(km4=clust_km4, pam1=clust_pam1, pam2=clust_pam2, pam3=clust_pam3, pam4=clust_pam4)) # km4 = pam1
+```
+
+We can observe that km vs. pam method is easier to define clusters based on sample overlap. Therefore, these two methods are the most concordant.
+
+##### Let's validate these using simpler venn diagrams. 
+```{r}
+# km1 = pam2 = hc3
+# 100% concordance between km1 and pam2
+# whereas 6 samples are clustered differently using the hc method compared to km and pam
+venn(list(km1=clust_km1, pam2=clust_pam2, hc3=clust_hc3))
+
+# km2 = pam4 = hc1
+# only 1 sample in a different cluster using km compared to pam
+# whereas 11 samples are clustered differently using the hc method compared to km and pam
+venn(list(km2=clust_km2, pam4=clust_pam4, hc1=clust_hc1))
+
+
+# km3 = pam3 = hc1
+# only 1 sample in a different cluster using pam compared to km
+# whereas 9 samples are clustered differently using the hc method compared to km and pam
+venn(list(km3=clust_km3, pam3=clust_pam3, hc1=clust_hc1))
+
+
+# km4 = pam1 = hc1
+# 100% concordance between km4 and pam1
+# whereas 13 samples are clustered differently using the hc method compared to km and pam
+venn(list(km4=clust_km4, pam1=clust_pam1, hc1=clust_hc1))
+```
 
