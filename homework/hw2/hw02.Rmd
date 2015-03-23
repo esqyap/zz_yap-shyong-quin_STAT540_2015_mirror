@@ -7,3 +7,150 @@ output:
     keep_md: yes
 ---
 
+## Attach packages used in homework 2
+```{r, message=FALSE, warning=FALSE}
+library(car)
+library(gplots)
+library(ggplot2)
+library(GGally)
+library(lattice)
+library(RColorBrewer)
+library(reshape2)
+```
+
+## Q1 Microarray analysis
+
+> Q1a) (0 points) Load Microarray Data
+
+**Load the normalized data.**
+```{r}
+# load normalized microarray data
+mdat <- read.table("../../data/GSE37599-data.tsv", header=TRUE, row.names=1)
+
+# what is the flavour of the dataset? 
+str(mdat)
+```
+
+**What are dimensions of the dataset?**
+```{r}
+dim(mdat)
+```
+
+**In addition to reporting number of rows and columns, make it clear what rows and columns represent and how you're interpreting column names.**
+```{r}
+# what are the column names?
+colnames(mdat)
+
+# what are the row names?
+head(row.names(mdat))
+```
+
+Based on this exploratory analysis, this dataset consists of 10928 rows and 6 columns. The rows represent the probes measured by the microarray platform whereas the columns represent yeast samples in the experiment. Three samples are labelled with "b" followed by 1-3. These are yeast samples grown in batch medium and the number following the letter represents the sample replicates. There are also three samples labelled with "c" followed by 1-3. These are yeast samples grown in the chemostat setup and the number following the letter represents the sample replicates. There are three replicates for each growth condition(total samples = 6).
+
+> Q1b) (1 point) Identify Sample Swap
+The labels on two of the samples have been swapped, that is one of the batch samples has been labelled as chemostat and vice-versa. Produce the plots described below and explain how they allow you to identify the swapped samples.
+
+**i. (High volume) scatter plot matrix.**
+```{r}
+ggpairs(mdat)
+```
+
+**ii. A heatmap of the first 100 genes (you can try more but it gets slow).**
+```{r, message=FALSE, warning=FALSE}
+# creat data frame for heatmap.2
+mdat_100 <- as.matrix(mdat[1:100, ])
+
+# extract sample names
+sample_name <- data.frame(sample=colnames(mdat_100))
+
+# color palette 
+jSpectral <- colorRampPalette(brewer.pal(n = 9, "Spectral"))
+palette_size <- 256
+spec_palette <- jSpectral(palette_size)
+
+# specify color labels for different samples
+sample_cols <- brewer.pal(11, "RdGy")[c(2,3,4,8,9,10)]
+
+# plot heatmap
+heatmap.2(mdat_100, col=spec_palette, 
+          trace="none", ColSideColors=sample_cols[unclass(sample_name$sample)],
+          margin=c(4,10))
+
+# add legend
+legend("topright", legend = levels(sample_name$sample),
+       col = sample_cols, ncol=2, lty = 1, lwd = 5, cex = 0.5)
+```
+
+**iii. Compute the Pearson correlation of the samples and plot the results using a heatmap.**
+```{r}
+# compute Pearson's correlation between samples
+corr_mdat <- cor(mdat)
+diag(corr_mdat) <- NA
+
+# plot heatmap
+heatmap.2(corr_mdat, col=spec_palette,
+          trace="none", 
+          ColSideColors=sample_cols[unclass(sample_name$sample)], 
+          RowSideColors=sample_cols[unclass(sample_name$sample)], 
+          margin=c(4,10))
+
+# add legend
+legend("topright", legend = levels(sample_name$sample),
+       col = sample_cols, ncol=2, lty = 1, lwd = 5, cex = 0.5)
+```
+
+**iv. Scatterplot the six data samples with respect to the first two principal components and label the samples.**
+```{r}
+
+```
+
+> Q1c) (2 points) Microarray Differential Expression
+
+**Fix the label swap identified in question 1b. We want to swap b1 <--> c2. Revisit one or more elements of question 1b to sanity check before proceeding.**
+```{r}
+
+```
+
+**Package these results in a data frame with six columns:**
+
+- probe.id - The array probe id.
+
+- gene.id - The id of the gene which the probe overlaps (see below).
+
+- p.value - The raw p-value for the probe.
+
+- q.value - The BH corrected p-value, aka the q-value.
+
+- log.fc - The log fold change which is the column called "logFC" in the limma results table.
+
+- test.stat - The test statistics which for limma is the moderated t statistic. This is the column called "t" in the limma results table.
+
+```{r}
+
+```
+
+**Remove any rows with probes which don't map to genes. You'll be able to find these because they will have NA as their gene id. Work with this data.frame to answer the questions below.**
+```{r}
+
+```
+
+
+**i. How many probes did we start with and how many remain after removing probes without gene ids?**
+```{r}
+
+```
+
+**ii. Illustrate the differential expression between the batch and the chemostat samples for the top hit (i.e., probe with the lowest p- or q-value).**
+
+**iii. How many probes are identified as differentially expressed at a false discovery rate (FDR) of 1e-5 (note: this is a FDR cutoff used in the original paper)?**
+
+**iv. Save your results for later with write.table().**
+
+## Q2 
+
+```{r}
+# jGraysFun <- colorRampPalette(brewer.pal(n = 9, "Greys"))
+# palette_size <- 256
+# grays_palette <- jGraysFun(palette_size)
+```
+
