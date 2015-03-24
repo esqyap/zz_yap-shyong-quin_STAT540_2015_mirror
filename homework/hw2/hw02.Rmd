@@ -186,8 +186,7 @@ ebfit <- eBayes(fit)
 ```
 
 > Package these results in a data frame with six columns:
-
-> - probe.id - The array probe id.
+  - probe.id - The array probe id.
   - gene.id - The id of the gene which the probe overlaps (see below).
   - p.value - The raw p-value for the probe.
   - q.value - The BH corrected p-value, aka the q-value.
@@ -347,8 +346,7 @@ ebfit <- eBayes(fit)
 ```
 
 > Package these results in a data.frame called 'voom.limma.deep.results' with five columns:
-  
-> - gene.id - The id of the gene which reads were aligned to.
+  - gene.id - The id of the gene which reads were aligned to.
   - p.value - The raw p-value for the gene.
   - q.value - The BH corrected p-value, aka the q-value.
   - log.fc - The log fold change which is the column called "logFC" in the edgeR results table.

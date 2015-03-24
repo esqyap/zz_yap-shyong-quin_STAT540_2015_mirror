@@ -249,17 +249,7 @@ fit &lt;- lmFit(mdat_fix, design)
 # apply eBayes() to moderate the estimated error variances
 ebfit &lt;- eBayes(fit)</code></pre>
 <blockquote>
-<p>Package these results in a data frame with six columns:</p>
-</blockquote>
-<blockquote>
-<ul>
-<li>probe.id - The array probe id.</li>
-<li>gene.id - The id of the gene which the probe overlaps (see below).</li>
-<li>p.value - The raw p-value for the probe.</li>
-<li>q.value - The BH corrected p-value, aka the q-value.</li>
-<li>log.fc - The log fold change which is the column called “logFC” in the limma results table.</li>
-<li>test.stat - The test statistics which for limma is the moderated t statistic. This is the column called “t” in the limma results table.</li>
-</ul>
+<p>Package these results in a data frame with six columns: - probe.id - The array probe id. - gene.id - The id of the gene which the probe overlaps (see below). - p.value - The raw p-value for the probe. - q.value - The BH corrected p-value, aka the q-value. - log.fc - The log fold change which is the column called “logFC” in the limma results table. - test.stat - The test statistics which for limma is the moderated t statistic. This is the column called “t” in the limma results table.</p>
 </blockquote>
 <p>Now to extract output of the linear model using <code>topTable()</code>.</p>
 <pre class="r"><code>top &lt;- topTable(ebfit, number=Inf)</code></pre>
@@ -415,16 +405,7 @@ fit &lt;- lmFit(cdat_norm, design)
 # apply eBayes() to moderate the estimated error variances
 ebfit &lt;- eBayes(fit)</code></pre>
 <blockquote>
-<p>Package these results in a data.frame called ‘voom.limma.deep.results’ with five columns:</p>
-</blockquote>
-<blockquote>
-<ul>
-<li>gene.id - The id of the gene which reads were aligned to.</li>
-<li>p.value - The raw p-value for the gene.</li>
-<li>q.value - The BH corrected p-value, aka the q-value.</li>
-<li>log.fc - The log fold change which is the column called “logFC” in the edgeR results table.</li>
-<li>test.stat - The test statistic, which is the column called “t”.</li>
-</ul>
+<p>Package these results in a data.frame called ‘voom.limma.deep.results’ with five columns: - gene.id - The id of the gene which reads were aligned to. - p.value - The raw p-value for the gene. - q.value - The BH corrected p-value, aka the q-value. - log.fc - The log fold change which is the column called “logFC” in the edgeR results table. - test.stat - The test statistic, which is the column called “t”.</p>
 </blockquote>
 <p>Time to package the data as described in the instructions above.</p>
 <pre class="r"><code># use topTable to extract output of the linear model
