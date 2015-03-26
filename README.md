@@ -29,6 +29,7 @@ Seminars
 - [sm07](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/tree/master/seminar/sm07)
 - [sm08](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/tree/master/seminar/sm08)
 - [sm09](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/tree/master/seminar/sm09)
+- [sm10](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/tree/master/seminar/sm10)
 
 Homework
 --------
