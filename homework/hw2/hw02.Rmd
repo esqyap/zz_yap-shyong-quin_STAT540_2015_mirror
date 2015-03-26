@@ -276,7 +276,7 @@ nrow(subset(top_filter, q.value < 1e-05))
 
 At FDR < 1e-05, there are `r nrow(subset(top_filter, q.value < 1e-05))` differentially expressed genes between yeast samples grown under batch medium and chemostat setup. 
 
-> iv. Save your results for later with write.table().
+> iv. Save your results for later with `write.table()`.
 
 ```{r}
 # save differentially expressed genes with FDR < 1e-05
@@ -325,16 +325,16 @@ Grey labels (c group) are clustered together whereas red labels (b group) are cl
 
 ### Q2b) (2 points) voom Differential Expression Analysis
 
-> Use voom+limma to identify differentially expressed genes between the batch medium vs. chemostat conditions.
+> Use `voom+limma` to identify differentially expressed genes between the batch medium vs. chemostat conditions.
 
-> i) voom normalizes the counts before it converts counts to log2-cpm. Use calcNormFactors to normalize counts.
+> i) `voom` normalizes the counts before it converts counts to log2-cpm. Use calcNormFactors to normalize counts.
 
 ```{r}
 # normalize counts
 norm_factor <- calcNormFactors(cdat)
 ```
 
-> ii) Use voom to convert count data into logged CPM data and then use limma to identify differentially expressed genes between conditions.
+> ii) Use `voom` to convert count data into logged CPM data and then use limma to identify differentially expressed genes between conditions.
 
 ```{r}
 # convert count data to logged CPM using voom()
@@ -380,7 +380,7 @@ nrow(subset(voom.limma.deep.results, q.value < 1e-05))
 
 There are `r nrow(subset(voom.limma.deep.results, q.value < 1e-05))` genes that are differentially expressed between conditions at FDR < 1e-05. 
 
-> iv) Save your results for later with write.table() in file called stampy.deep.limma.results.tsv.
+> iv) Save your results for later with `write.table()` in file called stampy.deep.limma.results.tsv.
 
 ```{r}
 # save differentially expressed genes with FDR < 1e-05
@@ -451,7 +451,7 @@ blah blah blah
 
 ### Q3b) (2 points) Plots
 
-> Plot the gene expression (i.e., from array data) and the logged counts (i.e., from RNA-Seq data) of: two interesting genes identified as DE by both analyses; one DE gene identified as DE only in the array analysis; one DE gene only in the voom+limma analysis; one boring gene in both analyses (i.e., 5 genes total measured with 2 platforms)
+> Plot the gene expression (i.e., from array data) and the logged counts (i.e., from RNA-Seq data) of: two interesting genes identified as DE by both analyses; one DE gene identified as DE only in the array analysis; one DE gene only in the `voom+limma` analysis; one boring gene in both analyses (i.e., 5 genes total measured with 2 platforms)
 
 Let's start by extracting data for two interesting genes identified as DE by both analyses.
 ```{r, warning=FALSE}
@@ -530,7 +530,7 @@ ggplot(int_array, aes(x=condition, y=gene.exp)) +
   ylab("Gene expression")
 ```
 
-Pick one DE gene only in the voom+limma analysis.
+Pick one DE gene only in the `voom+limma` analysis.
 ```{r}
 # extract DE genes identified only in voom+limma analysis
 voomlimma_only <- setdiff(voomlimma$gene.id, array$gene.id)
@@ -616,11 +616,11 @@ ggplot(bor_voomlimma, aes(x=condition, y=logged.counts)) +
 
 ## Q4: Deep vs low sequencing
 
-### Q4a) (1 point) voom+limma DEA of low sequencing data
+### Q4a) (1 point) `voom+limma` DEA of low sequencing data
 
-> In Q2b you analyzed deep count data using voom+limma. You will now repeat the analysis on the low sequencing data.
+> In Q2b you analyzed deep count data using `voom+limma`. You will now repeat the analysis on the low sequencing data.
 
-> i) Load the low depth count data using read.table; you will need to pass the arguments header=TRUE and row.names=1. The data file is available as stampy.low.counts.tsv.
+> i) Load the low depth count data using `read.table`; you will need to pass the arguments `header=TRUE` and `row.names=1`. The data file is available as stampy.low.counts.tsv.
 
 ```{r}
 # load low count data
@@ -667,11 +667,11 @@ voom.limma.low.results <- data.frame(gene.id=row.names(top),
                                       test.stat=top$t)
 ```
 
-### Q4b) (2 points) edgeR DEA of deep sequencing data
+### Q4b) (2 points) `edgeR` DEA of deep sequencing data
 
-> Now you will use edgeR to identify differentially expressed genes between the batch medium vs. chemostat conditions in the deep count datasets loaded in Q2a.
+> Now you will use `edgeR` to identify differentially expressed genes between the batch medium vs. chemostat conditions in the deep count datasets loaded in Q2a.
 
-> i) Recall that edgeR needs to estimate the dispersion parameter in the negative binomial model using an empirical Bayes method. Estimate the dispersion parameters using `estimateGLMCommonDisp`, `estimateGLMTrendedDisp` and `estimateGLMTagwiseDisp`.
+> i) Recall that `edgeR` needs to estimate the dispersion parameter in the negative binomial model using an empirical Bayes method. Estimate the dispersion parameters using `estimateGLMCommonDisp`, `estimateGLMTrendedDisp` and `estimateGLMTagwiseDisp`.
 
 ```{r, message=FALSE}
 # produce an object of type DGEList 
@@ -683,7 +683,7 @@ trend_disp <- estimateGLMTrendedDisp(com_disp, design)
 tag_disp <- estimateGLMTagwiseDisp(trend_disp, design)
 ```
 
-> ii) Use the glm functionality of edgeR, i.e. use the glmFit function, to identify differentially expressed genes between conditions.
+> ii) Use the `glm` functionality of `edgeR`, i.e. use the `glmFit` function, to identify differentially expressed genes between conditions.
 
 ```{r}
 # fit the model
@@ -758,15 +758,55 @@ edger.low.results <- data.frame(gene.id=row.names(tt_glm),
 
 ### Q4d) (2 point) Comparison of DEA
 
-> Now that we have the results of the differential expression analysis performed by voom+limma and edgeR methods on both low and deep count data, we are going to compare and illustrate the results.
+> Now that we have the results of the differential expression analysis performed by `voom+limma` and `edgeR` methods on both low and deep count data, we are going to compare and illustrate the results.
 
-> Create a Venn diagram showing all genes identified as differentially expressed (at FDR of 1e-5) in the four previous RNA-Seq analyses. If the comparison of 4 sets gets very confusing, you can also create different pairs of Venn diagrams of interest.
+> Create a Venn diagram showing all genes identified as differentially expressed (at FDR of 1e-05) in the four previous RNA-Seq analyses. If the comparison of 4 sets gets very confusing, you can also create different pairs of Venn diagrams of interest.
+
+```{r}
+# basically used the codes given in the homework
+# extract DE genes at FDR < 1e-05
+voomlimma_deep <- subset(voom.limma.deep.results$gene.id, 
+                          voom.limma.deep.results$q.value < 1e-05)
+
+voomlimma_low <- subset(voom.limma.low.results$gene.id, 
+                         voom.limma.low.results$q.value < 1e-05)
+
+edger_deep <- subset(edger.deep.results$gene.id, 
+                     edger.deep.results$q.value < 1e-05)
+
+edger_low <- subset(edger.low.results$gene.id, 
+                     edger.low.results$q.value < 1e-05)
+
+# assign names to the lists for plotting
+de_genes <- list(voomlimma_deep=voomlimma_deep, voomlimma_low=voomlimma_low,
+                 edger_deep=edger_deep, edger_low=edger_low)
+
+# start a new plot
+plot.new()
+
+# draw the Venn diagram
+venn_plot <- venn.diagram(de_genes, filename = NULL, 
+                          fill = c("red", "blue", "green", "yellow"))
+
+# draw the plot on the screen
+grid.draw(venn_plot)
+```
 
 > i) How many genes were identified by voom+limma in both low and deep count data?
 
+None.
+
 > ii) How many genes were identified by edgeR in both low and deep count data?
+
+`r 478+7` genes. 
 
 > iii) How many genes were identified in all the analyses?
 
-> iv) Comment on the effect of sequencing depth on the DEA results. Is one of the methods more robust to this effect than the other. Make any additional observations about your results that you find interesting.
+None. This is because no DE genes were identified at FDR < 1e-05 using the `voom+limma` analysis for the low counts data.
+
+> iv) Comment on the effect of sequencing depth on the DEA results. Is one of the methods more robust to this effect than the other? Make any additional observations about your results that you find interesting.
+
+When sequencing depth is reduced, DE genes identified by the `voom+limma` method reduced from 1794 genes to none. As for the `edgeR` method, reduced sequencing depth resulted in a decrease in DE genes from 2669 to 486. 
+
+The `edgeR` method is more robust to reduced sequencing depth because `r round(485/2669*100)`% of DE genes identified in the DEA of the high sequencing depth dataset were retained in the DEA results of the low sequencing depth dataset. In contrast to the `edgeR` method, no DE genes were retained using the `voom+limma` method when sequencing depth was reduced. 
 
