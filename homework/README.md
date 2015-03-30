@@ -10,6 +10,6 @@ Homework 1
 Homework 2
 --------
 
-- [Rmd](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/tree/master/homework/hw2/hw02.Rmd)
+- [Rmd](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/blob/master/homework/hw2/hw02.Rmd)
 - [md](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/blob/master/homework/hw2/hw02.md)
-- [HTML](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/testRepo/tree/master/homework/hw2/hw02.html)
+- [HTML](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/blob/master/homework/hw2/hw02.html)
