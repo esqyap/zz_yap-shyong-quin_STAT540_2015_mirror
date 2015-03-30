@@ -40,5 +40,5 @@ Homework
 --------
 
 - [hw1](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/tree/master/homework/hw1)
-- [hw2](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/testRepo/tree/master/homework/hw2)
+- [hw2](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/tree/master/homework/hw2)
 
