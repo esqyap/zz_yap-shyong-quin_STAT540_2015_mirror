@@ -6,3 +6,84 @@ output:
   html_document:
     keep_md: yes
 ---
+
+## Practice exercise
+
+### Load packages
+
+```{r, message=FALSE, warning=FALSE}
+library(MASS)
+library(reshape)
+library(car)
+library(limma)
+library(e1071)
+library(glmnet)
+library(ROCR)
+library(CMA)
+library(GEOquery)
+library(lattice)
+library(class)
+```
+
+### Data preparation
+
+```{r}
+if(file.exists("class_LNstatus.Rdata")) { # if previously downloaded
+  load("class_LNstatus.Rdata")
+} else { # if downloading for the first time
+  # takes a several mins!; returns a list
+  datgeo <- getGEO('GSE23177', GSEMatrix = TRUE) 
+  dat <- datgeo[[1]]   #Note that dat is an ExpressionSets
+  
+  str(pData(dat), max.level = 0)
+  
+  # extract only those variables of interest 
+  pData(dat) <-
+    subset(pData(dat),
+           select = c("characteristics_ch1.2",
+                      "characteristics_ch1.3","characteristics_ch1"))
+  names(pData(dat))<-c("LnStatus", "LnRatio", "Set")
+
+  #Note: LNRatio will not be used in this Seminar. However, you can use it to try some of the regularization techniques learned in class
+  
+  # split the ExpressionSet into training and test sets. 
+  train.es <- dat[, dat$Set == "patient type: training set"]
+  test.es <- dat[ , dat$Set != "patient type: training set"]
+
+  #Re-label factor
+  pData(train.es)$LnStatus <-
+      recode(pData(train.es)$LnStatus, "levels(pData(train.es)$LnStatus)[1]='neg'; else='pos'", levels = c('neg', 'pos'))
+
+  pData(test.es)$LnStatus <-
+      recode(pData(test.es)$LnStatus, "levels(pData(test.es)$LnStatus)[1]='neg'; else='pos'",
+             levels = c('neg', 'pos'))
+
+  # create data matrices with expression values (probesets in rows). Some of the functions we will use do not take ExpressionSets as objects
+  trainDat <- exprs(train.es)
+  testDat <- exprs(test.es)
+
+  # Redefine the quantitative variable LnRatio to make it a numeric variable.
+  ntrain <- dim(pData(train.es))[1]
+  ntest <- dim(pData(test.es))[1]
+  
+  pData(train.es)$LnRatio <- as.numeric(unlist(strsplit(as.vector(unlist(pData(train.es)$LnRatio)), ":", fixed = TRUE))[(1:ntrain)*2])
+  pData(test.es)$LnRatio <- as.numeric(unlist(strsplit(as.vector(unlist(pData(test.es)$LnRatio)), ":", fixed = TRUE))[(1:ntest)*2])
+
+  # save the data to avoid future re-downloading
+  save(dat,trainDat,testDat,train.es,test.es, file = "class_LNstatus.Rdata")
+}
+```
+
+### Data exploration
+
+```{r}
+# look at the expression of 3 randomly picked genes in both training and test sets
+set.seed(1234)
+(getMe <- sample(1:nrow(train.es), size = 3)) 
+
+# training data
+trDat <- trainDat[getMe, ]
+
+
+```
+
