@@ -103,10 +103,10 @@ pr.err <- matrix(-1, nfold*nruns, nmethod,
                                       rep(1:nfold, times=nruns)),
                                       c("1NN", "5NN", "10NN", 
                                         "15NN", "LDA",
-                                        "Logit", "SVM", "10NN-p.value")))
+                                        "Logit", "SVM", "10NN-p")))
 ```
 
-Modify the loop for feature selection+modeling so that it performs 100 runs of CV.
+Modify the loop for feature selection+modeling so that it performs 100 runs of CV. I also added a 10NN model which retains genes at P.Value < 0.05 from the training and test sets. This additional model is named `10NN-p`.
 
 ```{r}
 for (run in 1:nruns){
@@ -213,7 +213,7 @@ for (run in 1:nruns){
     yhat.knn <- knn(train=t(traindat.fold.pval), 
                       test=t(testdat.fold.pval), cl=trainclass.fold,
                       k = 10)
-    pr.err[i+((run-1)*nfold),"10NN-p.value"]<- mean(testclass.fold != yhat.knn)
+    pr.err[i+((run-1)*nfold),"10NN-p"]<- mean(testclass.fold != yhat.knn)
     } #end of CV loop
   } # end of 100 runs
 ```
