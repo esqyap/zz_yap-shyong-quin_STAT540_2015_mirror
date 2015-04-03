@@ -23,9 +23,108 @@ library(yeast2.db)
 ```
 
 ## Useful functions
-After going through this hw02, I realized there were many occasions that required repetition of the same analysis on different datasets. For this purpose, it is a good idea to functionalize some commonly used scripts. 
+After going through hw02, I realized there were many occasions that required repetition of the same analysis on different datasets. For this purpose, it is a good idea to functionalize some commonly used scripts.
+
 ```{r}
-# TBA
+# 01. plot heatmap of Pearson's correlation between samples
+pcorr <- function(data){
+  # compute Pearson's correlation between samples
+  pcorr_dat <- cor(data)
+  diag(pcorr_dat) <- NA
+  
+  # plot heatmap
+  heatmap.2(pcorr_dat, col=spectral.palette,
+          trace="none",
+          ColSideColors=sample.cols[unclass(sample.name$sample)], 
+          RowSideColors=sample.cols[unclass(sample.name$sample)],
+          margin=c(4,10))
+  
+  # add legend
+  legend("topright", legend=levels(sample.name$sample),
+       col=sample.cols, ncol=2, border=FALSE,
+       lty=1, lwd=5, cex=0.5)
+}
+
+# 02. perform limma DEA and package output
+do.limma.dea <- function(data, array=FALSE){
+  # fit the linear model
+  fit <- lmFit(data, design)
+  
+  # apply eBayes() to moderate the estimated error variances
+  ebfit <- eBayes(fit)
+  
+  # get output of the linear model
+  top <- topTable(ebfit, number=Inf)
+  
+  # if array, get gene.id
+  if (array){
+    # retrive gene IDs from yeast2ORF
+    probe.id <- row.names(top)
+    gene.id <- unlist(mget(probe.id, yeast2ORF))
+    
+    # make data frame
+    data.frame(probe.id=probe.id, gene.id=gene.id,
+                     p.value=top$P.Value, q.value=top$adj.P.Val,
+                     log.fc=top$logFC, test.stat=top$t)
+    } else {
+      data.frame(gene.id=row.names(top),
+                 p.value=top$P.Value, q.value=top$adj.P.Val,
+                 log.fc=top$logFC, test.stat=top$t)
+    }
+  }
+
+# 03. when a list of probe IDs and gene IDs are provided
+#     get gene expression from array data and read counts from RNA seq data
+#     generate a tall-and-skinny data frame 
+get.genes <- function(probe.list, gene.list, x=""){
+  # get gene expression from array data
+  gene.exp <- subset(array.dat.fix, 
+                     row.names(array.dat.fix) %in% probe.list)
+  
+  # make data frame tall and skinny
+  df <- melt(t(gene.exp))
+  colnames(df)[1:3] <- c("sample", "probe.id", "array")
+  df <- data.frame(gene.id=rep(unlist(gene.list), each=6), df)
+  
+  # substitute sample labels with growth condition
+  df$sample <- sub("b\\d", "batch", df$sample)
+  df$sample <- sub("c\\d", "chemostat", df$sample)
+  
+  # get read counts from RNA seq data
+  read.counts <- melt(t(subset(deep.count.dat, 
+                          row.names(deep.count.dat) %in% gene.list)))$value
+ 
+  # add read counts to the array data frame
+  df <- data.frame(df, voomlimma=read.counts)
+  
+  # make data frame tall and skinny and add DEA status
+  # DEA status (e.g. common.interesting = DE genes in both array and limma analysis)
+  df <- melt(df, id.vars=c("sample", "probe.id", "gene.id"), 
+                   measure.vars=c("array", "voomlimma"),
+                   variable.name="DEA")
+  df <- data.frame(df, DEA.status=x)
+}
+
+# 04. perform edgeR DEA and package output
+do.edgeR.dea <- function(data){
+  # produce an object of type DGEList 
+  dge.glm <- DGEList(counts=data, group=metadata$condition)
+  
+  # estimate dispersion parameters
+  com.disp <- estimateGLMCommonDisp(dge.glm, design, verbose=TRUE)
+  trend.disp <- estimateGLMTrendedDisp(com.disp, design)
+  tag.disp <- estimateGLMTagwiseDisp(trend.disp, design)
+  
+  # fit the model
+  fit <- glmFit(tag.disp, design)
+  lrt <- glmLRT(fit, coef=2)
+  tt.glm <- topTags(lrt, n=Inf)
+  
+  # package results to the specified data frame
+  data.frame(gene.id=row.names(tt.glm),
+             p.value=tt.glm$table$PValue, q.value=tt.glm$table$FDR,
+             log.fc=tt.glm$table$logFC, test.stat=tt.glm$table$LR)
+}
 ```
 
 ## Q1 Microarray analysis
@@ -36,26 +135,26 @@ After going through this hw02, I realized there were many occasions that require
 
 ```{r}
 # load normalized microarray data
-mdat <- read.table("../../data/GSE37599-data.tsv", header=TRUE, row.names=1)
+array.dat <- read.table("../../data/GSE37599-data.tsv", header=TRUE, row.names=1)
 
 # what is the flavour of the dataset? 
-str(mdat)
+str(array.dat)
 ```
 
 > What are dimensions of the dataset?
 
 ```{r}
-dim(mdat)
+dim(array.dat)
 ```
 
 > In addition to reporting number of rows and columns, make it clear what rows and columns represent and how you're interpreting column names.**
 
 ```{r}
 # what are the column names?
-colnames(mdat)
+colnames(array.dat)
 
 # what are the row names?
-head(row.names(mdat))
+head(row.names(array.dat))
 ```
 
 Based on this exploratory analysis, this dataset consists of 10928 rows and 6 columns. The rows represent the probes measured by the microarray platform whereas the columns represent yeast samples in the experiment. Three samples are labelled with "b" followed by 1-3. These are yeast samples grown in batch medium and the number following the letter represents the sample replicates. There are also three samples labelled with "c" followed by 1-3. These are yeast samples grown in the chemostat setup and the number following the letter represents the sample replicates. There are three replicates for each growth condition(total samples = 6).
@@ -67,66 +166,67 @@ Based on this exploratory analysis, this dataset consists of 10928 rows and 6 co
 > i. (High volume) scatter plot matrix.
 
 ```{r}
-ggpairs(mdat)
+ggpairs(array.dat) + theme_bw()
 ```
 
-From the far-left column of the scatter plot matrix, we can be observed that b1 is more highly correlated with c1 and c3 compared to b2 and b3. From the second last row, we can be observed that c2 is more highly correlated to b2 and b3 compared to c1. From the correlation plot between c2 and c3 (last row, second from the right), we can also be observed that c2 is less correlated to c3. 
+From the far-left column of the scatter plot matrix, we can be observed that b1 is more highly correlated with c1 and c3 compared to b2 and b3. From the second last row, we can be observed that c2 is more highly correlated to b2 and b3 compared to c1. From the correlation plot between c2 and c3 (last row, second plot from the right), we can also observed that c2 is less correlated to c3. 
+
+This indicates a sample swap between b1 and c2! 
 
 > ii. A heatmap of the first 100 genes (you can try more but it gets slow).
 
 ```{r, message=FALSE, warning=FALSE}
 # create data frame for heatmap.2
-mdat_100 <- as.matrix(mdat[1:100, ])
+array.100 <- as.matrix(array.dat[1:100, ])
 
 # extract sample names
-sample_name <- data.frame(sample=colnames(mdat_100))
+sample.name <- data.frame(sample=colnames(array.100))
 
 # color palette 
-jSpectral <- colorRampPalette(brewer.pal(n=9, "Spectral"))
-palette_size <- 256
-spec_palette <- jSpectral(palette_size)
+j.spectral <- colorRampPalette(brewer.pal(n=9, "Spectral"))
+palette.size <- 256
+spectral.palette <- j.spectral(palette.size)
 
 # specify color labels for different samples
-sample_cols <- brewer.pal(11, "RdGy")[c(2,3,4,8,9,10)]
+sample.cols <- brewer.pal(11, "RdGy")[c(2,3,4,8,9,10)]
 
-# plot heatmap
-heatmap.2(mdat_100, col=spec_palette, 
-          trace="none", 
-          ColSideColors=sample_cols[unclass(sample_name$sample)],
+# plot heatmap without sample clustering
+heatmap.2(array.100, col=spectral.palette, 
+          trace="none", Colv=NA, 
+          ColSideColors=sample.cols[unclass(sample.name$sample)],
           main="Heatmap of 100 genes",
           margin=c(4,10))
 
 # add legend
-legend("topright", legend = levels(sample_name$sample),
-       col=sample_cols, ncol=2, lty=1, lwd=5, cex=0.5)
+legend("topright", legend = levels(sample.name$sample),
+       col=sample.cols, ncol=2, lty=1, lwd=5, cex=0.5)
 ```
 
-From the heatmap, we can be observed that c2 clusters with b2 and b3 whereas b1 clusters with c1 and c3. 
+From this heatmap without sample clustering (turned off column clustering), we can clearly see that the expression of certain genes are different between b1 and the other b samples. In addition, we can see that the expression of the same set of genes are differentially expressed between c2 and the other c samples. To point out an example, we can notice the darker blue line from the far left column for the b1 sample and this darker blue line is followed by red for b2 and b3. This is similarly observed for the same set of genes for the c samples, in which the darker blue line continued for c1, switched to red for c2, then switched back to darker blue for c3. 
+
+This observation supports the sample swap between b1 and c2. 
+
+Let's allow clustering for the samples. We should expect that b1 will cluster with c1 and c3 whereas c2 will cluster with b2 ad b3. 
+```{r}
+# plot heatmap with sample clustering
+heatmap.2(array.100, col=spectral.palette, 
+          trace="none", 
+          ColSideColors=sample.cols[unclass(sample.name$sample)],
+          main="Heatmap of 100 genes",
+          margin=c(4,10))
+
+# add legend
+legend("topright", legend = levels(sample.name$sample),
+       col=sample.cols, ncol=2, lty=1, lwd=5, cex=0.5)
+```
+
+As expected, we can observed that c2 clusters with b2 and b3 whereas b1 clusters with c1 and c3. 
 
 > iii. Compute the Pearson correlation of the samples and plot the results using a heatmap.
 
 ```{r}
-# functionalize this step because it is required in the future
-pcorr <- function(data){
-  # compute Pearson's correlation between samples
-  pcorr_dat <- cor(data)
-  diag(pcorr_dat) <- NA
-  
-  # plot heatmap
-  heatmap.2(pcorr_dat, col=spec_palette,
-          trace="none",
-          ColSideColors=sample_cols[unclass(sample_name$sample)], 
-          RowSideColors=sample_cols[unclass(sample_name$sample)],
-          margin=c(4,10))
-  
-  # add legend
-  legend("topright", legend=levels(sample_name$sample),
-       col=sample_cols, ncol=2, border=FALSE,
-       lty=1, lwd=5, cex=0.5)
-}
-
-# compute for dataset with swapped samples
-pcorr(mdat)
+# use the pcorr() function for this question
+pcorr(array.dat)
 ```
 
 The heatmap showing Pearson's correlation between samples also demonstrated that c2 clusters with b2 and b3 while b1 clusters with c1 and c3. 
@@ -135,22 +235,23 @@ The heatmap showing Pearson's correlation between samples also demonstrated that
 
 ```{r}
 # perform pca
-pca <- prcomp(mdat)
+pca <- prcomp(array.dat)
 
 # extract PC1 and PC2
-pca_df <- data.frame(pca$rotation)[ ,1:2]
+pca.df <- data.frame(pca$rotation)[ ,1:2]
 
 # make data frame for plotting
-pca_df <- data.frame(condition=rep(c("batch", "chemostat"), each=3), pca_df)
+pca.df <- data.frame(condition=rep(c("batch", "chemostat"), each=3), pca.df)
 
 # plot pca with respect to the first two principal components
-ggplot(pca_df, aes(x=PC1, y=PC2, color=condition, label=rownames(pca_df))) +
-  geom_text()
+ggplot(pca.df, aes(x=PC1, y=PC2, color=condition, label=rownames(pca.df))) +
+  geom_text() + 
+  theme_bw()
 ```
 
 Lastly, the scatterplot of the first two principal components showed that b1 clusters with c1 and c3 whereas c2 clusters with b2 and b3. 
 
-In conclusion, all four plots showed that there is a sample swap between b1 and c2.
+In conclusion, all four plots showed that a sample swap occurs between b1 and c2.
 
 ### Q1c) (2 points) Microarray Differential Expression
 
@@ -159,15 +260,15 @@ In conclusion, all four plots showed that there is a sample swap between b1 and 
 Now to fix the label swap and some sanity check before proceeding.
 ```{r}
 # fix label swap
-mdat_fix <- with(mdat, data.frame(row.names=row.names(mdat), 
-                                  b1=mdat$c2, b2=mdat$b2, 
-                                  b3=mdat$b3, c1=mdat$c1, 
-                                  c2=mdat$b1, c3=mdat$c3))
+array.dat.fix <- with(array.dat, data.frame(row.names=row.names(array.dat), 
+                                  b1=array.dat$c2, b2=array.dat$b2, 
+                                  b3=array.dat$b3, c1=array.dat$c1, 
+                                  c2=array.dat$b1, c3=array.dat$c3))
 ```
 
 Time to revisit one or more elements of question 1b to sanity check before proceeding...I pick the heatmap showing Pearson's correlation between samples. 
 ```{r}
-pcorr(mdat_fix)
+pcorr(array.dat.fix)
 ```
 
 The samples are clustered in the correct groups. Unlike the previous heatmap depicting Pearson's correlation between samples, we can see that the grey labels (chemostat growth condition) are clustered together while red labels (batch medium) are clustered together.
@@ -176,22 +277,6 @@ Everything checked out. Good to go!
 
 > Now use this data to do a differential expression analysis with `limma`.
 
-First, we need to generate a design matrix before fitting the linear model. 
-```{r}
-# create metadata
-metadata <- data.frame(sample=colnames(mdat), condition=rep(c("batch", "chemostat"), each=3))
-
-# create design matrix
-design <- model.matrix(~condition, metadata)
-str(design)
-
-# fit the linear model
-fit <- lmFit(mdat_fix, design)
-
-# apply eBayes() to moderate the estimated error variances
-ebfit <- eBayes(fit)
-```
-
 > Package these results in a data frame with six columns:
   - probe.id - The array probe id.
   - gene.id - The id of the gene which the probe overlaps (see below).
@@ -199,25 +284,24 @@ ebfit <- eBayes(fit)
   - q.value - The BH corrected p-value, aka the q-value.
   - log.fc - The log fold change which is the column called "logFC" in the limma results table.
   - test.stat - The test statistics which for limma is the moderated t statistic. This is the column called "t" in the limma results table.
+  
+First, we need to generate a design matrix before fitting the linear model. 
+```{r}
+# create metadata
+metadata <- data.frame(sample=colnames(array.dat.fix), 
+                       condition=rep(c("batch", "chemostat"), each=3))
 
-Now to extract output of the linear model using `topTable()`.
-```{r, message=FALSE}
-top <- topTable(ebfit, number=Inf)
+# create design matrix
+design <- model.matrix(~condition, metadata)
+design
 ```
 
-We can retrive the gene IDs from the `yeast2ORF` object from the `yeast2.db` package and construct the data frame described above.
-```{r, message=FALSE, warning=FALSE}
-# retrive gene IDs from yeast2ORF
-probe_id <- row.names(top)
-gene_id <- unlist(mget(probe_id, yeast2ORF))
-
-# make data frame
-top <- data.frame(probe.id=probe_id, gene.id=gene_id,
-                     p.value=top$P.Value, q.value=top$adj.P.Val,
-                     log.fc=top$logFC, test.stat=top$t)
+Using the `do.limma.dea()` function, we can perform DEA and package the data as specified above.
+```{r, message=FALSE}
+limma.array.results <- do.limma.dea(array.dat.fix, array=TRUE)
 
 # check dimensions of the dataframe
-str(top, max.level=0)
+str(limma.array.results, max.level=0)
 ```
 
 > Remove any rows with probes which don't map to genes. You'll be able to find these because they will have NA as their gene id. Work with this data.frame to answer the questions below.
@@ -225,43 +309,45 @@ str(top, max.level=0)
 Based on the description above, let's filter out rows with NA as their gene IDs.
 ```{r}
 # filter out NA values
-top_filter <- subset(top, top$gene.id != "NA")
+limma.filter.array.results <- subset(limma.array.results, 
+                                     limma.array.results$gene.id != "NA")
 
 # check dimensions of the filtered dataset
-str(top_filter, max.level=0)
+str(limma.filter.array.results, max.level=0)
 ```
 
 > i. How many probes did we start with and how many remain after removing probes without gene ids?
 
 ```{r}
 # pre-filtered datasets 
-nrow(top)
+nrow(limma.array.results)
 
 # dataset without NA values as gene IDs
-nrow(top_filter)
+nrow(limma.filter.array.results)
 ```
 
-We started with `r nrow(top)` probes and we are left with `r nrow(top_filter)` after filtering out gene IDs with NA values. 
+We started with `r nrow(limma.array.results)` probes and we are left with `r nrow(limma.filter.array.results)` after filtering out gene IDs with NA values. 
 
 > ii. Illustrate the differential expression between the batch and the chemostat samples for the top hit (i.e., probe with the lowest p- or q-value).
 
 ```{r, message=FALSE}
 # top hit with lowest q-value
-top_hit <- top_filter$probe.id[1]
+top.hit <- limma.filter.array.results$probe.id[1]
 
-# select gene expression for the probe for all samples from mdat
-top_hit <- mdat_fix[top_hit, ]
+# select gene expression for the probe for all samples from array.dat.fix
+top.hit <- array.dat.fix[top.hit, ]
 
 # make data frame tall and skinny
-top_hit <- melt(top_hit)
-top_hit <- cbind(gene=rep(top_filter$probe.id[1], 
-                          each=nrow(top_hit)), 
-                 condition=metadata$condition, top_hit)
+top.hit <- melt(top.hit)
+top.hit <- cbind(gene=rep(limma.filter.array.results$probe.id[1], 
+                          each=nrow(top.hit)), 
+                 condition=metadata$condition, top.hit)
 
 # plot 
-ggplot(top_hit, aes(x=condition, y=value)) + 
+ggplot(top.hit, aes(x=condition, y=value)) + 
   geom_point() +
   facet_wrap(~gene) +
+  theme_bw() +
   stat_summary(aes(group=1), fun.y=mean, geom="line") +
   ylab("Gene expression") +
   xlab("Growth condition") 
@@ -271,17 +357,19 @@ ggplot(top_hit, aes(x=condition, y=value)) +
 
 ```{r}
 # number of probes with FDR < 1e-05
-nrow(subset(top_filter, q.value < 1e-05))
+nrow(subset(limma.filter.array.results, q.value < 1e-05))
+
+# save differentially expressed genes with FDR < 1e-05
+array.dea.fdr <- subset(limma.filter.array.results, q.value < 1e-05)
 ```
 
-At FDR < 1e-05, there are `r nrow(subset(top_filter, q.value < 1e-05))` differentially expressed genes between yeast samples grown under batch medium and chemostat setup. 
+At FDR < 1e-05, there are `r nrow(subset(limma.filter.array.results, q.value < 1e-05))` differentially expressed genes between yeast samples grown under batch medium and chemostat setup. 
 
 > iv. Save your results for later with `write.table()`.
 
 ```{r}
-# save differentially expressed genes with FDR < 1e-05
-dea_fdr <- subset(top_filter, q.value < 1e-05)
-write.table(dea_fdr, "micro.limma.results.tsv", row.names=TRUE, col.names=NA)
+# save DEA results
+write.table(limma.filter.array.results, "array.limma.results.tsv", row.names=TRUE, col.names=NA)
 ```
 
 
@@ -293,32 +381,32 @@ write.table(dea_fdr, "micro.limma.results.tsv", row.names=TRUE, col.names=NA)
 
 ```{r}
 # load count data
-cdat <- read.table("../../data/stampy.deep.counts.tsv", header=TRUE, row.names=1)
+deep.count.dat <- read.table("../../data/stampy.deep.counts.tsv", header=TRUE, row.names=1)
 
 # what is the flavour of the dataset? 
-str(cdat)
+str(deep.count.dat)
 ```
 
 > i) What are dimensions of the dataset? In addition to reporting number of rows and columns, make it clear what rows and columns represent. What is the difference between the rows of this dataset versus rows of the array data in question 1a?
 
 ```{r}
 # dimensions of the dataset
-dim(cdat)
+dim(deep.count.dat)
 
 # what do the columns represent? 
-colnames(cdat)
+colnames(deep.count.dat)
 
 # what do the rows represent?
-head(row.names(cdat))
+head(row.names(deep.count.dat))
 ```
 
-The count dataset has `r nrow(cdat)` rows and `r ncol(cdat)` columns. The columns represent the 6 yeast samples grown under batch medium (b group) and chemostat setup (c group). Unlike the rows in the microarray data which represent probe IDs, the rows in the count data represent sequence annotations on the yeast reference genome. While the numeric values in the microarray data are gene expression, the numeric values in the count data are number of reads. 
+The count dataset has `r nrow(deep.count.dat)` rows and `r ncol(deep.count.dat)` columns. The columns represent the 6 yeast samples grown under batch medium (b group) and chemostat setup (c group). Unlike the rows in the microarray data which represent probe IDs, the rows in the count data represent sequence annotations of the yeast reference genome. While the numeric values in the microarray data are gene expression, the numeric values in the count data are number of reads. 
 
 > ii) Do a sanity check to make sure there is no sample swap by plotting a heatmap of the sample correlations.
 
 ```{r}
 # use pcorr() function to do this
-pcorr(cdat)
+pcorr(deep.count.dat)
 ```
 
 Grey labels (c group) are clustered together whereas red labels (b group) are clustered together. No sample swap is identified, we can move on.
@@ -331,25 +419,10 @@ Grey labels (c group) are clustered together whereas red labels (b group) are cl
 
 ```{r}
 # normalize counts
-norm_factor <- calcNormFactors(cdat)
+norm.factor <- calcNormFactors(deep.count.dat)
 ```
 
 > ii) Use `voom` to convert count data into logged CPM data and then use limma to identify differentially expressed genes between conditions.
-
-```{r}
-# convert count data to logged CPM using voom()
-cdat_norm <- voom(cdat, design, plot=TRUE,
-                  lib.size=colSums(cdat)*norm_factor)
-```
-
-Now, we can use `limma` to get differentially expressed genes between conditions. 
-```{r}
-# fit the linear model
-fit <- lmFit(cdat_norm, design)
-
-# apply eBayes() to moderate the estimated error variances
-ebfit <- eBayes(fit)
-```
 
 > Package these results in a data.frame called 'voom.limma.deep.results' with five columns:
   - gene.id - The id of the gene which reads were aligned to.
@@ -358,17 +431,13 @@ ebfit <- eBayes(fit)
   - log.fc - The log fold change which is the column called "logFC" in the edgeR results table.
   - test.stat - The test statistic, which is the column called "t".
 
-Time to package the data as described in the instructions above.
-```{r, message=FALSE, warning=FALSE}
-# use topTable to extract output of the linear model
-top <- topTable(ebfit, number=Inf)
+```{r, message=FALSE}
+# convert count data to logged CPM using voom()
+deep.count.norm <- voom(deep.count.dat, design, plot=TRUE,
+                  lib.size=colSums(deep.count.dat)*norm.factor)
 
-# create data frame
-voom.limma.deep.results <- data.frame(gene.id=row.names(top),
-                                      p.value=top$P.Value, 
-                                      q.value=top$adj.P.Val,
-                                      log.fc=top$logFC,
-                                      test.stat=top$t)
+# again, we can utilize the do.limma.dea() function
+voom.limma.deep.results <- do.limma.dea(deep.count.norm, array=FALSE)
 ```
 
 > iii) How many genes are differentially expressed between conditions at a false discovery rate (FDR) of 1e-05?
@@ -376,6 +445,9 @@ voom.limma.deep.results <- data.frame(gene.id=row.names(top),
 ```{r}
 # number of genes with FDR < 1e-05
 nrow(subset(voom.limma.deep.results, q.value < 1e-05))
+
+# save differentially expressed genes with FDR < 1e-05
+deep.dea.fdr <- subset(voom.limma.deep.results, q.value < 1e-05)
 ```
 
 There are `r nrow(subset(voom.limma.deep.results, q.value < 1e-05))` genes that are differentially expressed between conditions at FDR < 1e-05. 
@@ -383,9 +455,9 @@ There are `r nrow(subset(voom.limma.deep.results, q.value < 1e-05))` genes that 
 > iv) Save your results for later with `write.table()` in file called stampy.deep.limma.results.tsv.
 
 ```{r}
-# save differentially expressed genes with FDR < 1e-05
-dea_fdr <- subset(voom.limma.deep.results, q.value < 1e-05)
-write.table(dea_fdr, "stampy.deep.limma.results.tsv", row.names=TRUE, col.names=NA)
+# save DEA results
+write.table(voom.limma.deep.results, "stampy.deep.limma.results.tsv", 
+            row.names=TRUE, col.names=NA)
 ```
 
 
@@ -395,59 +467,61 @@ write.table(dea_fdr, "stampy.deep.limma.results.tsv", row.names=TRUE, col.names=
 
 > In this question, you will examine the difference between the q-values from both analyses (i.e., array and voom+limma) by overlaying density plots of the q-values from each analysis.
 
-Load both data sets.
+We'll be working with these two datasets for this question.
 ```{r}
-# microarray
-array <- read.table("micro.limma.results.tsv", header=T, row.names=1)
+# limma DEA results for microarray data
+str(limma.filter.array.results)
   
-# RNA seq
-voomlimma <- read.table("stampy.deep.limma.results.tsv", header=T, row.names=1)
+# voom+limma DEA results for deep count data
+str(voom.limma.deep.results)
 ```
 
 Generate density plot that represents q.values of common genes analyzed by both platforms.
-```{r}
+```{r, message=FALSE}
 # what are the genes analyzed by both platforms?
-common <- intersect(array$gene.id, voomlimma$gene.id)
+common <- intersect(limma.filter.array.results$gene.id, voom.limma.deep.results$gene.id)
 
 # extract the common genes
-array_common <- subset(array$q.value, array$gene.id %in% common)
-voomlimma_common <- subset(voomlimma$q.value, voomlimma$gene.id %in% common)
+array.common <- subset(limma.filter.array.results$q.value, 
+                       limma.filter.array.results$gene.id %in% common)
+voomlimma.common <- subset(voom.limma.deep.results$q.value, 
+                           voom.limma.deep.results$gene.id %in% common)
 
 # make data frame for plotting
-common_df <- data.frame(microarray=array_common, 
-                        RNAseq=voomlimma_common)
-common_df <- melt(common_df,
-                  variable.name="platform", 
-                  value.name="q.value")
+common.df <- data.frame(platform=c(rep("array", each=length(array.common)), 
+                                   rep("voomlimma", each=length(voomlimma.common))),
+                        q.value=c(array.common, voomlimma.common))
 
 # plot
-ggplot(common_df, aes(q.value, color=platform)) +
-  geom_density() +
+ggplot(common.df, aes(q.value, fill=platform)) +
+  geom_density(alpha=0.3) +
   scale_x_log10() +
   theme_bw() +
+  xlab("log(q.value)") +
   ggtitle("q values of common genes analyzed by both platforms")
 ```
 
 Generate density plot that represents q.values of all genes analyzed by both platforms.
 ```{r}
 # data frame of q-values for all genes 
-array_all <- data.frame(platform=rep("microarray", each=nrow(array)),
-                        q.value=array$q.value)
-voomlimma_all <- data.frame(platform=rep("RNAseq", each=nrow(voomlimma)), 
-                       q.value=voomlimma$q.value)
-all_df <- rbind(array_all, voomlimma_all)
-
+all.df <- data.frame(platform=c(rep("array", each=nrow(limma.filter.array.results)),
+                                   rep("voomlimma", each=nrow(voom.limma.deep.results))),
+                        q.value=c(limma.filter.array.results$q.value, 
+                                  voom.limma.deep.results$q.value))
+                      
 # plot
-ggplot(all_df, aes(q.value, color=platform)) +
-  geom_density() +
-  scale_x_log10() +
+ggplot(all.df, aes(q.value, fill=platform)) +
+  geom_density(alpha=0.3) +
   theme_bw() +
+  scale_x_log10() +
+  xlab("log(q.value)") +
   ggtitle("q values of all genes analyzed by both platforms")
 ```
 
 > Make some observations about the strengths of these two platforms.
 
-blah blah blah
+Based on the density plots, we can see that the `voom+limma` analysis resulted in more lower q values compared to the array analysis. This is the reason why there are more DE genes at FDR < 1e-05 from the `voom+limma` DEA results in comparison to the array analysis. This also means that the `voom+limma` platform is more sensitive to calling DE hits compared to the array analysis.
+
 
 ### Q3b) (2 points) Plots
 
@@ -456,163 +530,105 @@ blah blah blah
 Let's start by extracting data for two interesting genes identified as DE by both analyses.
 ```{r, warning=FALSE}
 # pick two DE/interesting genes common in both platforms
-(int_common_genes <- common[1:2])
+common <- intersect(array.dea.fdr$gene.id, 
+                    deep.dea.fdr$gene.id)
 
-# what probe IDs correspond to these genes?
-(int_common_probes <- subset(array$probe.id, array$gene.id %in% int_common_genes))
+# extract from the DEA array results because it has both probe IDs and gene IDs
+common <- subset(limma.filter.array.results,
+                 limma.filter.array.results$gene.id %in% common)
 
-# extract gene expression from microarray dataset
-int_common <- subset(mdat_fix, row.names(mdat_fix) %in% int_common_probes)
+# get the gene.id and probe.id common DE genes
+(int.common.genes <- common$gene.id[1:2])
+(int.common.probes <- common$probe.id[1:2])
 
-# make data frame for plotting 
-int_common <- t(int_common)
-int_common <- melt(int_common)
-colnames(int_common) <- c("sample", "probe.id", "gene.exp")
-
-# add read counts data
-int_common_reads <- melt(t(subset(cdat, row.names(cdat) %in% int_common_genes)))
-int_common <- cbind(condition=rep(c("batch", "chemostat", "batch", "chemostat"), each=3),
-                    int_common, 
-                    int_common_reads[ ,2:3])
-
-# rename the last two columns
-colnames(int_common)[5:6] <- c("gene.id", "count")
+# get gene expression and count data for common DE/interesting genes
+int.common <- get.genes(int.common.probes, int.common.genes, x="DE.by.both.analyses")
 ```
-
-The DE genes I picked are YIL057C and YOR388C which correspond to probe IDs 1772391_at and 1774122_at respectively. 
-
-From the generated data frame, we can plot gene expression vs. growth conditions.
-```{r}
-ggplot(int_common, aes(x=condition, y=gene.exp)) +
-  geom_point() +
-  facet_wrap(~probe.id) +
-  stat_summary(aes(group=1), fun.y=mean, geom="line") +
-  ylab("Gene expression")
-```
-
-Now, let's plot logged counts vs. growth conditions. 
-```{r}
-ggplot(int_common, aes(x=condition, y=count)) +
-  geom_point() +
-  facet_wrap(~gene.id) +
-  stat_summary(aes(group=1), fun.y=mean, geom="line") +
-  ylab("Logged counts")
-```
-
-Moving on...
 
 Pick one DE gene identified as DE only in the array analysis.
 ```{r}
-# extract DE genes identified only in array analysis
-array_only <- setdiff(array$gene.id, voomlimma$gene.id)
+# get DE genes identified only in array analysis
+array.only <- setdiff(array.dea.fdr$gene.id, 
+                      deep.dea.fdr$gene.id)
 
-# pick one gene
-(int_array_gene <- array_only[2])
+# extract from the DEA array results 
+array.only <- subset(limma.filter.array.results,
+                 limma.filter.array.results$gene.id %in% array.only)
 
-# what probe ID corresponds to this gene?
-(int_array_probe <- subset(array$probe.id, array$gene.id %in% int_array_gene))
+# get the gene.id and probe.id common DE genes
+(int.array.gene <- array.only$gene.id[1])
+(int.array.probe <- array.only$probe.id[1])
 
-# extract gene expression from microarray dataset
-int_array <- subset(mdat_fix, row.names(mdat_fix) %in% int_array_probe)
-
-# make data frame for plotting 
-int_array <- t(int_array)
-int_array <- melt(int_array)
-colnames(int_array) <- c("sample", "probe.id", "gene.exp")
-int_array <- cbind(condition=rep(c("batch", "chemostat"), each=3),
-                    int_array)
-
-# plot
-ggplot(int_array, aes(x=condition, y=gene.exp)) +
-  geom_point() +
-  facet_wrap(~probe.id) +
-  stat_summary(aes(group=1), fun.y=mean, geom="line") +
-  ylab("Gene expression")
+# get gene expression and count data for common DE/interesting genes
+int.array.only <- get.genes(int.array.probe, int.array.gene, x="DE.by.array.only")
 ```
 
 Pick one DE gene only in the `voom+limma` analysis.
 ```{r}
-# extract DE genes identified only in voom+limma analysis
-voomlimma_only <- setdiff(voomlimma$gene.id, array$gene.id)
+# get DE genes identified only in voom+limma analysis
+voomlimma.only <- setdiff(deep.dea.fdr$gene.id, 
+                          array.dea.fdr$gene.id)
 
-# pick one gene
-(int_voomlimma_gene <- voomlimma_only[2])
+# extract from the DEA voom+limma results
+voomlimma.only <- subset(voom.limma.deep.results,
+                 voom.limma.deep.results$gene.id %in% voomlimma.only)
 
-# extract logged counts from RNA-seq dataset
-int_voomlimma <- subset(cdat, row.names(cdat) %in% int_voomlimma_gene)
+# get the gene.id and probe.id common DE genes
+(int.voomlimma.gene <- voomlimma.only$gene.id[3])
+(int.voomlimma.probe <- subset(limma.filter.array.results$probe.id, 
+                               limma.filter.array.results$gene.id 
+                               %in% int.voomlimma.gene))
 
-# make data frame for plotting 
-int_voomlimma <- t(int_voomlimma)
-int_voomlimma <- melt(int_voomlimma)
-colnames(int_voomlimma) <- c("sample", "gene.id", "logged.counts")
-int_voomlimma <- cbind(condition=rep(c("batch", "chemostat"), each=3),
-                    int_voomlimma)
-
-# plot
-ggplot(int_voomlimma, aes(x=condition, y=logged.counts)) +
-  geom_point() +
-  facet_wrap(~gene.id) +
-  stat_summary(aes(group=1), fun.y=mean, geom="line") +
-  ylab("Logged counts")
+# get gene expression and count data for common DE/interesting genes
+int.voomlimma.only <- get.genes(int.voomlimma.probe, 
+                                int.voomlimma.gene, x="DE.by.voomlimma.only")
 ```
 
 Pick one boring gene in both analyses. 
 ```{r}
 # pick 100 boring genes from array analysis
-bor_array <- tail(top_filter, 100)
+bor.array <- tail(limma.filter.array.results, 100)
 
 # pick 100 boring genes from RNA-seq analysis
-bor_voomlimma <- tail(voom.limma.deep.results, 100)
+bor.voomlimma <- tail(voom.limma.deep.results, 100)
 
 # what are the common boring genes? 
-(common <- intersect(bor_array$gene.id, bor_voomlimma$gene.id))
+(common <- intersect(bor.array$gene.id, bor.voomlimma$gene.id))
 
 # pick one boring gene from the list
-(common_bor <- common[1])
+(common <- common[1])
+
+# extract from the DEA array results because it has both probe IDs and gene IDs
+common <- subset(limma.filter.array.results,
+                 limma.filter.array.results$gene.id %in% common)
+
+# get the gene.id and probe.id common DE genes
+(bor.common.gene <- common$gene.id)
+(bor.common.probe <- common$probe.id)
+
+# get gene expression and count data for common DE/interesting genes
+bor.common <- get.genes(bor.common.probe, bor.common.gene, x="not.DE.by.both.analyses")
 ```
 
-Plot gene expression vs. growth conditions for the probe which corresponds to the YFR052W gene. 
+Now we can create the big data frame with all the selected genes and plot gene expression/read counts vs. growth condition. 
 ```{r}
-# what probe ID corresponds to this gene?
-(bor_array_probe <- subset(top_filter$probe.id, top_filter$gene.id %in% common_bor))
+# create big data frame of interesting and boring genes
+int.bor.df <- rbind(int.common, int.array.only, int.voomlimma.only, bor.common)
 
-# extract gene expression from microarray dataset
-bor_array <- subset(mdat_fix, row.names(mdat_fix) %in% bor_array_probe)
+# make ggplot stop reordering my genes
+int.bor.df$gene.id <- as.character(int.bor.df$gene.id)
+int.bor.df$gene.id <- factor(int.bor.df$gene.id, levels=unique(int.bor.df$gene.id))
 
-# make data frame for plotting 
-bor_array <- t(bor_array)
-bor_array <- melt(bor_array)
-colnames(bor_array) <- c("sample", "probe.id", "gene.exp")
-bor_array <- cbind(condition=rep(c("batch", "chemostat"), each=3),
-                    bor_array)
-
-# plot
-ggplot(bor_array, aes(x=condition, y=gene.exp)) +
+# plot 
+ggplot(int.bor.df, aes(x=sample, y=value, color=DEA.status)) +
   geom_point() +
-  facet_wrap(~probe.id) +
+  facet_grid(DEA ~ gene.id, scales="free") +
   stat_summary(aes(group=1), fun.y=mean, geom="line") +
-  ylab("Gene expression")
+  theme_bw() +
+  theme(axis.text.x=element_text(angle = -90, hjust = 0)) +
+  ylab("count/gene expression") 
 ```
 
-Plot logged counts vs. growth conditions for the YFR052W gene. 
-```{r}
-# extract logged counts from RNA-seq dataset
-bor_voomlimma <- subset(cdat, row.names(cdat) %in% common_bor)
-
-# make data frame for plotting 
-bor_voomlimma <- t(bor_voomlimma)
-bor_voomlimma <- melt(bor_voomlimma)
-colnames(bor_voomlimma) <- c("sample", "gene.id", "logged.counts")
-bor_voomlimma <- cbind(condition=rep(c("batch", "chemostat"), each=3),
-                    bor_voomlimma)
-
-# plot
-ggplot(bor_voomlimma, aes(x=condition, y=logged.counts)) +
-  geom_point() +
-  facet_wrap(~gene.id) +
-  stat_summary(aes(group=1), fun.y=mean, geom="line") +
-  ylab("Logged counts")
-```
 
 ## Q4: Deep vs low sequencing
 
@@ -623,48 +639,36 @@ ggplot(bor_voomlimma, aes(x=condition, y=logged.counts)) +
 > i) Load the low depth count data using `read.table`; you will need to pass the arguments `header=TRUE` and `row.names=1`. The data file is available as stampy.low.counts.tsv.
 
 ```{r}
-# load low count data
-low_cdat <- read.table("../../data/stampy.low.counts.tsv", header=TRUE, row.names=1)
+# load low depth count data
+low.count.dat <- read.table("../../data/stampy.low.counts.tsv", header=TRUE, row.names=1)
 
 # smell test
-str(low_cdat)
+str(low.count.dat)
 ```
 
 The low counts dataset has 7126 rows and 6 columns. 
 
 > ii) Repeat Q2b-i and Q2b-ii for this new data.
 
+> Package these results in a data.frame called 'voom.limma.low.results' with five columns as you did in Q2b.
+
 Repeat Q2b(i).
 ```{r}
 # normalize counts
-norm_factor <- calcNormFactors(low_cdat)
+norm.factor <- calcNormFactors(low.count.dat)
 ```
 
 Repeat Q2b(ii).
 ```{r, message=FALSE}
 # convert count data to logged CPM using voom()
-low_cdat_norm <- voom(low_cdat, design, plot=TRUE,
-                  lib.size=colSums(low_cdat)*norm_factor)
+low.count.norm <- voom(low.count.dat, design, plot=TRUE,
+                  lib.size=colSums(low.count.dat)*norm.factor)
 
-# fit the linear model
-fit <- lmFit(low_cdat_norm, design)
+# perform DEA using limma and package the data as specified
+voom.limma.low.results <- do.limma.dea(low.count.norm, array=FALSE)
 
-# apply eBayes() to moderate the estimated error variances
-ebfit <- eBayes(fit)
-```
-
-> Package these results in a data.frame called 'voom.limma.low.results' with five columns as you did in Q2b.
-
-```{r, message=FALSE}
-# use topTable to extract output of the linear model
-top <- topTable(ebfit, number=Inf)
-
-# create data frame
-voom.limma.low.results <- data.frame(gene.id=row.names(top),
-                                      p.value=top$P.Value, 
-                                      q.value=top$adj.P.Val,
-                                      log.fc=top$logFC,
-                                      test.stat=top$t)
+# number of genes with FDR < 1e-05
+nrow(subset(voom.limma.low.results, q.value < 1e-05))
 ```
 
 ### Q4b) (2 points) `edgeR` DEA of deep sequencing data
@@ -673,37 +677,7 @@ voom.limma.low.results <- data.frame(gene.id=row.names(top),
 
 > i) Recall that `edgeR` needs to estimate the dispersion parameter in the negative binomial model using an empirical Bayes method. Estimate the dispersion parameters using `estimateGLMCommonDisp`, `estimateGLMTrendedDisp` and `estimateGLMTagwiseDisp`.
 
-```{r, message=FALSE}
-# produce an object of type DGEList 
-dge_glm <- DGEList(counts=cdat, group=metadata$condition)
-
-# estimate dispersion parameters
-com_disp <- estimateGLMCommonDisp(dge_glm, design, verbose=TRUE)
-trend_disp <- estimateGLMTrendedDisp(com_disp, design)
-tag_disp <- estimateGLMTagwiseDisp(trend_disp, design)
-```
-
 > ii) Use the `glm` functionality of `edgeR`, i.e. use the `glmFit` function, to identify differentially expressed genes between conditions.
-
-```{r}
-# fit the model
-fit <- glmFit(tag_disp, design)
-
-# what are the coefficients?
-colnames(coef(fit))
-
-lrt <- glmLRT(fit, coef=2)
-tt_glm <- topTags(lrt, n=Inf)
-```
-
-> iii) How many genes are differentially expressed between conditions at a false discovery rate (FDR) of 1e-05? Compare the results with those obtained in Q2b-iii.
-
-```{r}
-# get number of DE genes at FDR < 1e-05
-nrow(tt_glm$table[tt_glm$table$FDR < 1e-05,])
-```
-
-There are `r nrow(tt_glm$table[tt_glm$table$FDR < 1e-05,])` DE genes identified using `edgeR` analysis compared to `r nrow(subset(voom.limma.deep.results, q.value < 1e-05))` DE genes identified using `voom+limma`.
 
 > Package these results in a data.frame called 'edger.deep.results' with five columns:
   - gene.id - The id of the gene which reads were aligned to.
@@ -712,49 +686,34 @@ There are `r nrow(tt_glm$table[tt_glm$table$FDR < 1e-05,])` DE genes identified 
   - log.fc - The log fold change which is the column called "logFC" in the edgeR results table.
   - test.stat - The test statistic, which for edgeR is a likelihood ratio. This is the column called "LR" in the edgeR results table.
 
-```{r}
-# package results to the specified data frame
-edger.deep.results <- data.frame(gene.id=row.names(tt_glm),
-                                      p.value=tt_glm$table$PValue, 
-                                      q.value=tt_glm$table$FDR,
-                                      log.fc=tt_glm$table$logFC,
-                                      test.stat=tt_glm$table$LR)
+Perform all the above using the `do.edgeR.dea()` function.
+```{r, message=FALSE}
+edger.deep.results <- do.edgeR.dea(deep.count.dat)
 ```
+
+> iii) How many genes are differentially expressed between conditions at a false discovery rate (FDR) of 1e-05? Compare the results with those obtained in Q2b-iii.
+
+```{r}
+# get number of DE genes at FDR < 1e-05
+nrow(edger.deep.results[edger.deep.results$q.value < 1e-05,])
+```
+
+There are `r nrow(edger.deep.results[edger.deep.results$q.value < 1e-05,])` DE genes identified using `edgeR` analysis compared to `r nrow(subset(voom.limma.deep.results, q.value < 1e-05))` DE genes identified using `voom+limma`.
 
 ### Q4c) (1 point) edgeR DEA of low sequencing data
 
 > Repeat Q4b-i and Q4b-ii for the low count data. 
 
-```{r, message=FALSE}
-# produce an object of type DGEList 
-dge_glm <- DGEList(counts=low_cdat, group=metadata$condition)
-
-# estimate dispersion parameters
-com_disp <- estimateGLMCommonDisp(dge_glm, design, verbose=TRUE)
-trend_disp <- estimateGLMTrendedDisp(com_disp, design)
-tag_disp <- estimateGLMTagwiseDisp(trend_disp, design)
-
-# fit the model
-fit <- glmFit(tag_disp, design)
-lrt <- glmLRT(fit, coef=2)
-tt_glm <- topTags(lrt, n=Inf)
-
-# get number of DE genes at FDR < 1e-05
-nrow(tt_glm$table[tt_glm$table$FDR < 1e-05,])
-```
-
-For the low count data, there are `r nrow(tt_glm$table[tt_glm$table$FDR < 1e-05,])` DE genes identified using `edgeR` analysis compared to `r nrow(subset(voom.limma.low.results, q.value < 1e-05))` DE genes identified using `voom+limma`.
-
 > Package these results in a data.frame called 'edger.low.results' with five columns as before.
 
-```{r}
-# package results to the specified data frame
-edger.low.results <- data.frame(gene.id=row.names(tt_glm),
-                                      p.value=tt_glm$table$PValue, 
-                                      q.value=tt_glm$table$FDR,
-                                      log.fc=tt_glm$table$logFC,
-                                      test.stat=tt_glm$table$LR)
+```{r, message=FALSE}
+edger.low.results <- do.edgeR.dea(low.count.dat)
+
+# get number of DE genes at FDR < 1e-05
+nrow(edger.low.results[edger.low.results$q.value < 1e-05,])
 ```
+
+For the low count data, there are `r nrow(edger.low.results[edger.low.results$q.value < 1e-05,])` DE genes identified using `edgeR` analysis compared to `r nrow(subset(voom.limma.low.results, q.value < 1e-05))` DE genes identified using `voom+limma`.
 
 ### Q4d) (2 point) Comparison of DEA
 
@@ -765,31 +724,31 @@ edger.low.results <- data.frame(gene.id=row.names(tt_glm),
 ```{r}
 # basically used the codes given in the homework
 # extract DE genes at FDR < 1e-05
-voomlimma_deep <- subset(voom.limma.deep.results$gene.id, 
+voomlimma.deep <- subset(voom.limma.deep.results$gene.id, 
                           voom.limma.deep.results$q.value < 1e-05)
 
-voomlimma_low <- subset(voom.limma.low.results$gene.id, 
+voomlimma.low <- subset(voom.limma.low.results$gene.id, 
                          voom.limma.low.results$q.value < 1e-05)
 
-edger_deep <- subset(edger.deep.results$gene.id, 
+edger.deep <- subset(edger.deep.results$gene.id, 
                      edger.deep.results$q.value < 1e-05)
 
-edger_low <- subset(edger.low.results$gene.id, 
+edger.low <- subset(edger.low.results$gene.id, 
                      edger.low.results$q.value < 1e-05)
 
 # assign names to the lists for plotting
-de_genes <- list(voomlimma_deep=voomlimma_deep, voomlimma_low=voomlimma_low,
-                 edger_deep=edger_deep, edger_low=edger_low)
+de.genes <- list(voomlimma.deep=voomlimma.deep, voomlimma.low=voomlimma.low,
+                 edger.deep=edger.deep, edger.low=edger.low)
 
 # start a new plot
 plot.new()
 
 # draw the Venn diagram
-venn_plot <- venn.diagram(de_genes, filename = NULL, 
+venn.plot <- venn.diagram(de.genes, filename = NULL, 
                           fill = c("red", "blue", "green", "yellow"))
 
 # draw the plot on the screen
-grid.draw(venn_plot)
+grid.draw(venn.plot)
 ```
 
 > i) How many genes were identified by voom+limma in both low and deep count data?
@@ -808,5 +767,5 @@ None. This is because no DE genes were identified at FDR < 1e-05 using the `voom
 
 When sequencing depth is reduced, DE genes identified by the `voom+limma` method reduced from 1794 genes to none. As for the `edgeR` method, reduced sequencing depth resulted in a decrease in DE genes from 2669 to 486. 
 
-The `edgeR` method is more robust to reduced sequencing depth because `r round(485/2669*100)`% of DE genes identified in the DEA of the high sequencing depth dataset were retained in the DEA results of the low sequencing depth dataset. In contrast to the `edgeR` method, no DE genes were retained using the `voom+limma` method when sequencing depth was reduced. 
+The `edgeR` method is more robust to reduced sequencing depth because `r round(485/2669*100)`% of DE genes identified in the DEA of the deep sequencing depth dataset were retained in the DEA results of the low sequencing depth dataset. In contrast to the `edgeR` method, no DE genes were retained using the `voom+limma` method when sequencing depth was reduced. 
 
