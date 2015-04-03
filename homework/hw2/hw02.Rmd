@@ -626,7 +626,8 @@ ggplot(int.bor.df, aes(x=sample, y=value, color=DEA.status)) +
   stat_summary(aes(group=1), fun.y=mean, geom="line") +
   theme_bw() +
   theme(axis.text.x=element_text(angle = -90, hjust = 0)) +
-  ylab("count/gene expression") 
+  xlab("Growth condition")
+  ylab("Count/Gene expression") 
 ```
 
 
