@@ -433,7 +433,7 @@ norm.factor <- calcNormFactors(deep.count.dat)
 
 ```{r, message=FALSE}
 # convert count data to logged CPM using voom()
-deep.count.norm <- voom(deep.count.dat, design, plot=TRUE,
+deep.count.norm <- voom(deep.count.dat, design, plot=FALSE,
                   lib.size=colSums(deep.count.dat)*norm.factor)
 
 # again, we can utilize the do.limma.dea() function
@@ -625,7 +625,7 @@ ggplot(int.bor.df, aes(x=sample, y=value, color=DEA.status)) +
   facet_grid(DEA ~ gene.id, scales="free") +
   stat_summary(aes(group=1), fun.y=mean, geom="line") +
   theme_bw() +
-  theme(axis.text.x=element_text(angle = -90, hjust = 0)) +
+  theme(axis.text.x=element_text(angle = 90, hjust = 1, vjust = 0.5)) +
   xlab("Growth condition") +
   ylab("Count/Gene expression") 
 ```
@@ -662,7 +662,7 @@ norm.factor <- calcNormFactors(low.count.dat)
 Repeat Q2b(ii).
 ```{r, message=FALSE}
 # convert count data to logged CPM using voom()
-low.count.norm <- voom(low.count.dat, design, plot=TRUE,
+low.count.norm <- voom(low.count.dat, design, plot=FALSE,
                   lib.size=colSums(low.count.dat)*norm.factor)
 
 # perform DEA using limma and package the data as specified
