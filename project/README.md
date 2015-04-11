@@ -45,7 +45,7 @@ It is quite an interesting experience given that I'm the only group member with 
 
 ![Flow chart representing work flow](workflow_copy.png)
 
-##### Figure 1: Flow chart representing statistical analyses work flow.
+##### Figure 1: Flow chart representing statistical analysis work flow.
 
 
 ![Venn diagram of differentially methylated CGIs at FDR < 1e-04](venndiagram.png)
