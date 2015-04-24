@@ -2,7 +2,9 @@
 
 Group project details
 ---------------------
-[Project title: Identifying aberrant methylation patterns underlying colorectal cancer progression](https://github.com/santina/CrystalMethylation/blob/master/initial_project_summary.md)  
+[Project title: Identifying aberrant methylation patterns underlying colorectal cancer progression](https://github.com/evayap/yy_team01_colorectal-cancer_STAT540_2015_mirror)  
+
+[Individual report](https://github.com/STAT540-UBC/zz_yap-shyong-quin_STAT540_2015/blob/master/project/README.md)
 
 Project group members
 --------
